@@ -6,25 +6,29 @@ import '../models/video_info.dart';
 import '../services/api_client.dart';
 import '../services/download_manager.dart';
 import '../services/history_service.dart';
+import '../services/library_service.dart';
+import '../services/player_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
-import '../widgets/video_card.dart';
-import 'browser_screen.dart';
-import 'playlist_screen.dart';
+import '../widgets/app_widgets.dart';
+import '../widgets/download_sheet.dart';
 
-/// Search field with debounced live results.
+/// Search with debounced live results, styled like the reference app.
+/// Rows: thumbnail, white title, violet artist, download + menu.
 class SearchScreen extends StatefulWidget {
   final SettingsService settings;
   final DownloadManager downloads;
   final HistoryService history;
-  final void Function(VideoInfo video) onVideoTap;
+  final LibraryService library;
+  final PlayerService player;
 
   const SearchScreen({
     super.key,
     required this.settings,
     required this.downloads,
     required this.history,
-    required this.onVideoTap,
+    required this.library,
+    required this.player,
   });
 
   @override
@@ -92,87 +96,197 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  void _play(VideoInfo v) {
+    widget.library.addRecent(v);
+    widget.history.addWatched(v);
+    widget.player.play(v, queue: _results ?? [v]);
+  }
+
+  void _download(VideoInfo v) {
+    showDownloadSheet(
+      context,
+      video: v,
+      settings: widget.settings,
+      downloads: widget.downloads,
+      history: widget.history,
+    );
+  }
+
+  void _menu(VideoInfo v) {
+    showModalBottomSheet(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading:
+                  const Icon(Icons.play_arrow, color: AppTheme.violet),
+              title: const Text(
+                'Play',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.of(c).pop();
+                _play(v);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.download_outlined,
+                color: Colors.white,
+              ),
+              title: const Text(
+                'Download',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.of(c).pop();
+                _download(v);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.favorite_border,
+                color: Colors.white,
+              ),
+              title: const Text(
+                'Add to Favorites',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () async {
+                Navigator.of(c).pop();
+                if (!widget.library.isFavorite(v)) {
+                  await widget.library.toggleFavorite(v);
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Added to favorites.')),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.playlist_add,
+                color: Colors.white,
+              ),
+              title: const Text(
+                'Add to Playlist',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.of(c).pop();
+                _addToPlaylistSheet(v);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _addToPlaylistSheet(VideoInfo v) {
+    final playlists = widget.library.playlists;
+    showModalBottomSheet(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Add to Playlist', style: AppText.title),
+            ),
+            Flexible(
+              child: playlists.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'No playlists yet.\nCreate one from the Playlists tab.',
+                        textAlign: TextAlign.center,
+                        style: AppText.body,
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: playlists.length,
+                      itemBuilder: (c, i) {
+                        final p = playlists[i];
+                        return ListTile(
+                          leading: const Icon(
+                            Icons.queue_music,
+                            color: AppTheme.violet,
+                          ),
+                          title: Text(
+                            p.name,
+                            style: const TextStyle(
+                                color: Colors.white),
+                          ),
+                          subtitle: Text(
+                            '${p.videos.length} songs',
+                            style: AppText.body,
+                          ),
+                          onTap: () async {
+                            await widget.library
+                                .addToPlaylist(p, v);
+                            if (c.mounted) Navigator.of(c).pop();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Added to ${p.name}.'),
+                                ),
+                              );
+                            }
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Search',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Playlist / URL',
-            icon: const Icon(Icons.playlist_add),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => PlaylistScreen(
-                  settings: widget.settings,
-                  downloads: widget.downloads,
-                  history: widget.history,
-                  onVideoTap: widget.onVideoTap,
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Built-in browser',
-            icon: const Icon(Icons.public),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => BrowserScreen(
-                  settings: widget.settings,
-                  downloads: widget.downloads,
-                  history: widget.history,
-                  onVideoTap: widget.onVideoTap,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: TextField(
-              controller: _controller,
-              onChanged: _onChanged,
-              onSubmitted: (v) => _runSearch(v.trim()),
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search videos or music...',
-                prefixIcon: const Icon(
-                  Icons.search,
-                  color: AppTheme.textGrey,
-                ),
-                suffixIcon: _controller.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear,
-                            color: AppTheme.textGrey),
-                        onPressed: () {
-                          _controller.clear();
-                          _runSearch('');
-                        },
-                      ),
-              ),
-            ),
-          ),
-          if (_searching)
+      backgroundColor: AppTheme.scaffoldBlack,
+      body: SafeArea(
+        child: Column(
+          children: [
             const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: SizedBox(
-                height: 3,
-                child: LinearProgressIndicator(
-                  backgroundColor: Colors.transparent,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(AppTheme.violet),
-                ),
+              padding: EdgeInsets.only(top: 12),
+              child: Text('Search', style: AppText.pageTitle),
+            ),
+            Padding(
+              padding:
+                  const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: SearchBarField(
+                hint: 'Search songs..',
+                controller: _controller,
+                onChanged: _onChanged,
               ),
             ),
-          Expanded(child: _buildBody()),
-        ],
+            if (_searching)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: SizedBox(
+                  height: 3,
+                  child: LinearProgressIndicator(
+                    backgroundColor: Colors.transparent,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.violet),
+                  ),
+                ),
+              ),
+            Expanded(child: _buildBody()),
+          ],
+        ),
       ),
     );
   }
@@ -194,7 +308,7 @@ class _SearchScreenState extends State<SearchScreen> {
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.textGrey),
+                style: AppText.body,
               ),
               const SizedBox(height: 12),
               ElevatedButton(
@@ -225,7 +339,7 @@ class _SearchScreenState extends State<SearchScreen> {
             Text(
               'Search for videos and music.\nResults appear as you type.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textGrey),
+              style: AppText.body,
             ),
           ],
         ),
@@ -235,18 +349,39 @@ class _SearchScreenState extends State<SearchScreen> {
       return Center(
         child: Text(
           'No results for "$_query".',
-          style: const TextStyle(color: AppTheme.textGrey),
+          style: AppText.body,
         ),
       );
     }
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: results.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (c, i) => VideoRow(
-        video: results[i],
-        onTap: () => widget.onVideoTap(results[i]),
+      separatorBuilder: (_, __) => const Divider(
+        height: 1,
+        color: Colors.white10,
       ),
+      itemBuilder: (c, i) {
+        final v = results[i];
+        return Row(
+          children: [
+            Expanded(
+              child: SongRow(
+                video: v,
+                onTap: () => _play(v),
+                onMenu: () => _menu(v),
+              ),
+            ),
+            IconButton(
+              onPressed: () => _download(v),
+              icon: const Icon(
+                Icons.download_outlined,
+                color: AppTheme.violet,
+                size: 22,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

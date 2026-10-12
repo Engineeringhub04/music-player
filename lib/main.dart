@@ -1,16 +1,22 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'models/video_info.dart';
 import 'screens/downloads_screen.dart';
+import 'screens/favorites_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/library_screen.dart';
+import 'screens/player_screen.dart';
+import 'screens/playlists_screen.dart';
 import 'screens/search_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/watch_screen.dart';
 import 'services/download_manager.dart';
 import 'services/history_service.dart';
+import 'services/library_service.dart';
+import 'services/player_service.dart';
 import 'services/settings_service.dart';
 import 'services/storage_service.dart';
 import 'theme.dart';
@@ -28,12 +34,19 @@ Future<void> main() async {
   final history = HistoryService();
   await history.init();
 
+  final library = LibraryService();
+  await library.init();
+
+  final player = PlayerService(settings: settings);
+
   runApp(
     MusicPlayerApp(
       settings: settings,
       downloads: downloads,
       storage: storage,
       history: history,
+      library: library,
+      player: player,
     ),
   );
 }
@@ -43,6 +56,8 @@ class MusicPlayerApp extends StatefulWidget {
   final DownloadManager downloads;
   final StorageService storage;
   final HistoryService history;
+  final LibraryService library;
+  final PlayerService player;
 
   const MusicPlayerApp({
     super.key,
@@ -50,6 +65,8 @@ class MusicPlayerApp extends StatefulWidget {
     required this.downloads,
     required this.storage,
     required this.history,
+    required this.library,
+    required this.player,
   });
 
   @override
@@ -59,28 +76,31 @@ class MusicPlayerApp extends StatefulWidget {
 class _MusicPlayerAppState extends State<MusicPlayerApp> {
   @override
   Widget build(BuildContext context) {
-    final dark = widget.settings.themeMode != 'light';
     return MaterialApp(
       title: 'Music Player',
       debugShowCheckedModeBanner: false,
-      theme: dark ? AppTheme.dark() : AppTheme.light(),
+      theme: AppTheme.dark(),
       home: MainShell(
         settings: widget.settings,
         downloads: widget.downloads,
         storage: widget.storage,
         history: widget.history,
+        library: widget.library,
+        player: widget.player,
         onSettingsChanged: () => setState(() {}),
       ),
     );
   }
 }
 
-/// Bottom nav shell: Home / Search / Downloads / Library.
+/// Bottom nav shell: Home | Playlists | (Player) | Favorites | Settings.
 class MainShell extends StatefulWidget {
   final SettingsService settings;
   final DownloadManager downloads;
   final StorageService storage;
   final HistoryService history;
+  final LibraryService library;
+  final PlayerService player;
   final VoidCallback onSettingsChanged;
 
   const MainShell({
@@ -89,6 +109,8 @@ class MainShell extends StatefulWidget {
     required this.downloads,
     required this.storage,
     required this.history,
+    required this.library,
+    required this.player,
     required this.onSettingsChanged,
   });
 
@@ -113,10 +135,8 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _initShareReceiver() {
-    // App opened via share while already running.
     _shareSub =
         ReceiveSharingIntent.instance.getMediaStream().listen(_onSharedMedia);
-    // App cold-started via share.
     ReceiveSharingIntent.instance.getInitialMedia().then((files) {
       _onSharedMedia(files);
       ReceiveSharingIntent.instance.reset();
@@ -143,7 +163,6 @@ class _MainShellState extends State<MainShell> {
             settings: widget.settings,
             downloads: widget.downloads,
             history: widget.history,
-            autoOpenDownload: true,
           );
         });
         break;
@@ -151,68 +170,201 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
-  /// Pulls the first http(s) URL out of shared text.
   String? _extractUrl(String text) {
     final m = RegExp(r'https?://[^\s]+').firstMatch(text);
     return m?.group(0);
   }
 
-  void _openVideo(VideoInfo video) {
-    openWatch(
-      context,
-      video,
-      settings: widget.settings,
-      downloads: widget.downloads,
-      history: widget.history,
+  void _openPlayer() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PlayerScreen(
+          player: widget.player,
+          library: widget.library,
+          settings: widget.settings,
+          downloads: widget.downloads,
+          history: widget.history,
+        ),
+      ),
     );
   }
+
+  void _goSearch() => setState(() => _index = _searchTabIndex());
+
+  int _searchTabIndex() => 4; // hidden search tab index
 
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      HomeScreen(settings: widget.settings, onVideoTap: _openVideo),
+      HomeScreen(
+        settings: widget.settings,
+        downloads: widget.downloads,
+        history: widget.history,
+        library: widget.library,
+        player: widget.player,
+        onVideoTap: (v) => widget.player.play(v),
+        onSearchTap: _goSearch,
+        onViewAllTrending: _goSearch,
+      ),
+      PlaylistsScreen(library: widget.library),
+      FavoritesScreen(
+        library: widget.library,
+        player: widget.player,
+        settings: widget.settings,
+        downloads: widget.downloads,
+        history: widget.history,
+      ),
+      SettingsScreen(
+        settings: widget.settings,
+        storage: widget.storage,
+        library: widget.library,
+        onChanged: widget.onSettingsChanged,
+      ),
       SearchScreen(
         settings: widget.settings,
         downloads: widget.downloads,
         history: widget.history,
-        onVideoTap: _openVideo,
-      ),
-      DownloadsScreen(downloads: widget.downloads),
-      LibraryScreen(
-        storage: widget.storage,
-        settings: widget.settings,
-        downloads: widget.downloads,
-        history: widget.history,
-        onSettingsChanged: widget.onSettingsChanged,
+        library: widget.library,
+        player: widget.player,
       ),
     ];
+    // Visible tab indices: 0=Home, 1=Playlists, 2=Favorites, 3=Settings.
+    // Index 4 = Search (hidden, opened via search bars).
+    final visibleIndex = _index >= 4 ? 0 : _index;
     return Scaffold(
       body: IndexedStack(index: _index, children: tabs),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: (i) => setState(() => _index = i),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
+      bottomNavigationBar: _buildNav(visibleIndex),
+    );
+  }
+
+  Widget _buildNav(int visibleIndex) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.scaffoldBlack,
+        border: Border(
+          top: BorderSide(
+            color: Colors.white.withValues(alpha: 0.08),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search_outlined),
-            activeIcon: Icon(Icons.search),
-            label: 'Search',
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home,
+                label: 'Home',
+                index: 0,
+                visibleIndex: visibleIndex,
+              ),
+              _navItem(
+                icon: Icons.queue_music_outlined,
+                activeIcon: Icons.queue_music,
+                label: 'Playlists',
+                index: 1,
+                visibleIndex: visibleIndex,
+              ),
+              _centerPlayerButton(),
+              _navItem(
+                icon: Icons.favorite_border,
+                activeIcon: Icons.favorite,
+                label: 'Favorites',
+                index: 2,
+                visibleIndex: visibleIndex,
+              ),
+              _navItem(
+                icon: Icons.settings_outlined,
+                activeIcon: Icons.settings,
+                label: 'Settings',
+                index: 3,
+                visibleIndex: visibleIndex,
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.download_outlined),
-            activeIcon: Icon(Icons.download),
-            label: 'Downloads',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.folder_outlined),
-            activeIcon: Icon(Icons.folder),
-            label: 'Library',
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem({
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+    required int index,
+    required int visibleIndex,
+  }) {
+    final active = visibleIndex == index;
+    final color = active ? AppTheme.violet : AppTheme.textGrey;
+    return InkWell(
+      onTap: () => setState(() => _index = index),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(active ? activeIcon : icon, color: color, size: 26),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight:
+                    active ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Center circular button showing current track artwork.
+  Widget _centerPlayerButton() {
+    return GestureDetector(
+      onTap: _openPlayer,
+      child: ListenableBuilder(
+        listenable: widget.player,
+        builder: (context, _) {
+          final thumb = widget.player.current?.thumbnailUrl ?? '';
+          return Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: thumb.isEmpty
+                  ? AppTheme.primaryGradient
+                  : null,
+              color: thumb.isEmpty ? null : AppTheme.cardDark,
+              border: Border.all(
+                color: AppTheme.violet.withValues(alpha: 0.5),
+                width: 2,
+              ),
+            ),
+            child: ClipOval(
+              child: thumb.isEmpty
+                  ? const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 30,
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: thumb,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => const Icon(
+                        Icons.play_arrow,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -236,6 +388,15 @@ void openWatch(
         history: history,
         autoOpenDownload: autoOpenDownload,
       ),
+    ),
+  );
+}
+
+/// Push the downloads screen (used from player / menus).
+void openDownloads(BuildContext context, DownloadManager downloads) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => DownloadsScreen(downloads: downloads),
     ),
   );
 }

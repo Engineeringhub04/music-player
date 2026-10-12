@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../services/api_client.dart';
+import '../services/library_service.dart';
 import '../services/settings_service.dart';
 import '../services/storage_service.dart';
 import '../theme.dart';
+import '../widgets/app_widgets.dart';
 
-/// Server config, quality, network, theme, storage info, connection test.
+/// Settings rows matching the reference layout.
+/// Kept: Clear Cache, Media Quality, Theme, Restore/Backup Lists, Share App,
+/// Rate Us, Privacy Policy, Terms of Use, Manage Privacy Settings.
+/// Added: Server URL + API Key (extractor). Removed: Spotify, Login, Country.
 class SettingsScreen extends StatefulWidget {
   final SettingsService settings;
   final StorageService storage;
+  final LibraryService library;
   final VoidCallback onChanged;
 
   const SettingsScreen({
     super.key,
     required this.settings,
     required this.storage,
+    required this.library,
     required this.onChanged,
   });
 
@@ -29,7 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _testing = false;
   String? _testResult;
   bool _testOk = false;
-  String _storagePath = '...';
+  String _cacheSize = '...';
 
   static const _qualities = [
     'Best',
@@ -39,6 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     '720p',
     '480p',
     '360p',
+    'Audio only',
   ];
 
   @override
@@ -46,12 +55,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _urlController = TextEditingController(text: widget.settings.baseUrl);
     _keyController = TextEditingController(text: widget.settings.apiKey);
-    _loadStoragePath();
+    _loadCacheSize();
   }
 
-  Future<void> _loadStoragePath() async {
-    final p = await widget.storage.downloadDirDisplayPath();
-    if (mounted) setState(() => _storagePath = p);
+  Future<void> _loadCacheSize() async {
+    try {
+      final bytes = await widget.storage.totalBytes();
+      if (mounted) setState(() => _cacheSize = _fmt(bytes));
+    } catch (_) {
+      if (mounted) setState(() => _cacheSize = '—');
+    }
+  }
+
+  String _fmt(int bytes) {
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
   }
 
   @override
@@ -108,224 +129,384 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _editServerSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 16,
+            bottom: MediaQuery.of(c).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Extractor Server', style: AppText.title),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _urlController,
+                keyboardType: TextInputType.url,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Server base URL',
+                  labelStyle: TextStyle(color: AppTheme.textGrey),
+                  prefixIcon:
+                      Icon(Icons.dns_outlined, color: AppTheme.textGrey),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _keyController,
+                obscureText: _obscureKey,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'API key',
+                  labelStyle:
+                      const TextStyle(color: AppTheme.textGrey),
+                  prefixIcon: const Icon(Icons.key_outlined,
+                      color: AppTheme.textGrey),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureKey
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: AppTheme.textGrey,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureKey = !_obscureKey),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: GradientButton(
+                      label: 'Save',
+                      icon: Icons.save_outlined,
+                      compact: true,
+                      onPressed: () {
+                        _saveServer();
+                        Navigator.of(c).pop();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _testing ? null : _testConnection,
+                      icon: _testing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.violet,
+                              ),
+                            )
+                          : const Icon(Icons.wifi_find_outlined,
+                              size: 18),
+                      label: const Text('Test'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side:
+                            const BorderSide(color: AppTheme.violet),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_testResult != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _testResult!,
+                  style: TextStyle(
+                    color: _testOk
+                        ? Colors.greenAccent
+                        : Colors.redAccent,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.settings;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Settings',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const _Section('Extractor server'),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _urlController,
-            keyboardType: TextInputType.url,
-            decoration: const InputDecoration(
-              labelText: 'Server base URL',
-              hintText: 'http://127.0.0.1:8001',
-              prefixIcon: Icon(Icons.dns_outlined),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _keyController,
-            obscureText: _obscureKey,
-            decoration: InputDecoration(
-              labelText: 'API key',
-              prefixIcon: const Icon(Icons.key_outlined),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscureKey
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                ),
-                onPressed: () =>
-                    setState(() => _obscureKey = !_obscureKey),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: GradientButton(
-                  label: 'Save',
-                  icon: Icons.save_outlined,
-                  compact: true,
-                  onPressed: _saveServer,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _testing ? null : _testConnection,
-                  icon: _testing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppTheme.violet,
-                          ),
-                        )
-                      : const Icon(Icons.wifi_find_outlined, size: 18),
-                  label: const Text('Test connection'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: AppTheme.violet),
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+      backgroundColor: AppTheme.scaffoldBlack,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            const Center(
+                child: Text('Settings', style: AppText.pageTitle)),
+            const SizedBox(height: 16),
+            SettingsRow(
+              icon: Icons.dns_outlined,
+              title: 'Server URL',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 150,
+                    child: Text(
+                      s.baseUrl,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: AppText.body,
                     ),
                   ),
-                ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right,
+                      color: AppTheme.textGrey),
+                ],
               ),
-            ],
-          ),
-          if (_testResult != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: (_testOk ? Colors.green : Colors.redAccent)
-                    .withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                _testResult!,
-                style: TextStyle(
-                  color: _testOk ? Colors.greenAccent : Colors.redAccent,
-                  fontSize: 13,
-                ),
-              ),
+              onTap: _editServerSheet,
             ),
-          ],
-          const SizedBox(height: 24),
-          const _Section('Downloads'),
-          const SizedBox(height: 8),
-          _tile(
-            icon: Icons.high_quality_outlined,
-            title: 'Default quality',
-            trailing: DropdownButton<String>(
-              value: _qualities.contains(s.defaultQuality)
-                  ? s.defaultQuality
-                  : 'Best',
-              dropdownColor: AppTheme.cardDark,
-              underline: const SizedBox(),
-              items: _qualities
-                  .map((q) => DropdownMenuItem(value: q, child: Text(q)))
-                  .toList(),
-              onChanged: (v) async {
-                if (v == null) return;
-                await s.setDefaultQuality(v);
-                setState(() {});
+            SettingsRow(
+              icon: Icons.key_outlined,
+              title: 'API Key',
+              trailing: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('••••••••', style: AppText.body),
+                  SizedBox(width: 4),
+                  Icon(Icons.chevron_right,
+                      color: AppTheme.textGrey),
+                ],
+              ),
+              onTap: _editServerSheet,
+            ),
+            SettingsRow(
+              icon: Icons.close,
+              title: 'Clear Cache',
+              trailing: Text(
+                _cacheSize,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+              onTap: () async {
+                await widget.library.clearCache();
+                await _loadCacheSize();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Cache cleared.')),
+                  );
+                }
               },
             ),
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.wifi_outlined),
-            title: const Text('Download on Wi-Fi only'),
-            value: s.wifiOnly,
-            activeThumbColor: AppTheme.violet,
-            onChanged: (v) async {
-              await s.setWifiOnly(v);
-              setState(() {});
-            },
-          ),
-          _tile(
-            icon: Icons.folder_outlined,
-            title: 'Download location',
-            subtitle: _storagePath,
-          ),
-          const SizedBox(height: 24),
-          const _Section('Appearance'),
-          const SizedBox(height: 8),
-          _tile(
-            icon: Icons.dark_mode_outlined,
-            title: 'Theme',
-            trailing: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(
-                  value: 'dark',
-                  icon: Icon(Icons.dark_mode, size: 18),
-                ),
-                ButtonSegment(
-                  value: 'light',
-                  icon: Icon(Icons.light_mode, size: 18),
-                ),
-              ],
-              selected: {s.themeMode},
-              onSelectionChanged: (sel) async {
-                await s.setThemeMode(sel.first);
+            SettingsRow(
+              icon: Icons.play_circle_outline,
+              title: 'Media Quality',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    s.defaultQuality.toLowerCase(),
+                    style: AppText.body,
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.unfold_more,
+                      color: AppTheme.textGrey, size: 20),
+                ],
+              ),
+              onTap: () => _pickQuality(s),
+            ),
+            SettingsRow(
+              icon: Icons.nightlight_round,
+              title: 'Theme',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    s.themeMode == 'light'
+                        ? 'light theme'
+                        : 'dark theme',
+                    style: AppText.body,
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.unfold_more,
+                      color: AppTheme.textGrey, size: 20),
+                ],
+              ),
+              onTap: () async {
+                final next =
+                    s.themeMode == 'light' ? 'dark' : 'light';
+                await s.setThemeMode(next);
                 widget.onChanged();
                 setState(() {});
               },
-              style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                backgroundColor: WidgetStateProperty.resolveWith(
-                  (states) => states.contains(WidgetState.selected)
-                      ? AppTheme.violet.withValues(alpha: 0.25)
-                      : null,
-                ),
+            ),
+            SettingsRow(
+              icon: Icons.playlist_add,
+              title: 'Restore Lists',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Restore: paste a backup via Backup Lists export.'),
+                  ),
+                );
+              },
+            ),
+            SettingsRow(
+              icon: Icons.upload_outlined,
+              title: 'Backup Lists',
+              onTap: () async {
+                final json = await widget.library.exportJson();
+                await SharePlus.instance.share(
+                  ShareParams(text: json, subject: 'Music Player backup'),
+                );
+              },
+            ),
+            SettingsRow(
+              icon: Icons.upload_outlined,
+              title: 'Share App',
+              onTap: () {
+                SharePlus.instance.share(
+                  ShareParams(
+                    text: 'Music Player — personal music app',
+                  ),
+                );
+              },
+            ),
+            SettingsRow(
+              icon: Icons.star,
+              title: 'Rate Us',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Thanks for using Music Player!')),
+                );
+              },
+            ),
+            SettingsRow(
+              icon: Icons.lock_outline,
+              title: 'Privacy Policy',
+              onTap: () => _showDoc(
+                  'Privacy Policy',
+                  'Music Player stores all data locally on your device. '
+                      'No account, no tracking, no analytics. Downloads stay in your '
+                      'MusicPlayer folder.'),
+            ),
+            SettingsRow(
+              icon: Icons.description_outlined,
+              title: 'Terms of Use',
+              onTap: () => _showDoc(
+                  'Terms of Use',
+                  'Personal use only. Only download content you have the right to. '
+                      'Respect creators and copyright law.'),
+            ),
+            SettingsRow(
+              icon: Icons.tune_outlined,
+              title: 'Manage Privacy Settings',
+              onTap: () => _showDoc(
+                  'Privacy Settings',
+                  'There is nothing to manage — the app collects no data.'),
+            ),
+            const SizedBox(height: 8),
+            const Center(
+              child: Text(
+                'Music Player v1.0.0+1\nPersonal use only',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: AppTheme.textGrey, fontSize: 12),
               ),
             ),
-          ),
-          const SizedBox(height: 32),
-          const Center(
-            child: Text(
-              'Music Player v1.0.0+1\nPersonal use only',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _pickQuality(SettingsService s) {
+    showModalBottomSheet(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Media Quality', style: AppText.title),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _qualities.length,
+                itemBuilder: (c, i) {
+                  final q = _qualities[i];
+                  final selected = s.defaultQuality == q;
+                  return ListTile(
+                    title: Text(
+                      q,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.normal,
+                      ),
+                    ),
+                    trailing: selected
+                        ? const Icon(Icons.check,
+                            color: AppTheme.violet)
+                        : null,
+                    onTap: () async {
+                      await s.setDefaultQuality(q);
+                      if (c.mounted) Navigator.of(c).pop();
+                      setState(() {});
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDoc(String title, String body) {
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: AppTheme.cardDark,
+        title: Text(
+          title,
+          style:
+              const TextStyle(color: Colors.white),
+        ),
+        content: Text(body, style: AppText.body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: AppTheme.violet),
             ),
           ),
         ],
       ),
     );
   }
-
-  Widget _tile({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    Widget? trailing,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: AppTheme.violet),
-      title: Text(title),
-      subtitle: subtitle == null
-          ? null
-          : Text(
-              subtitle,
-              style: const TextStyle(
-                color: AppTheme.textGrey,
-                fontSize: 12,
-              ),
-            ),
-      trailing: trailing,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-    );
-  }
-}
-
-class _Section extends StatelessWidget {
-  final String text;
-  const _Section(this.text);
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          color: AppTheme.textGrey,
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-          letterSpacing: 1.2,
-        ),
-      );
 }

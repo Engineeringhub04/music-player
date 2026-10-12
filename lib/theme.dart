@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 
 /// App-wide theme: dark AMOLED-first, violet primary.
+/// Palette cloned from the reference music app, recolored to our violet.
 class AppTheme {
   static const Color violet = Color(0xFF8B5CF6);
+  static const Color violetDim = Color(0xFF6D28D9);
   static const Color pink = Color(0xFFEC4899);
-  static const Color scaffoldBlack = Color(0xFF000000);
-  static const Color cardDark = Color(0xFF141414);
+
+  /// Page background.
+  static const Color scaffoldBlack = Color(0xFF0A0A0A);
+
+  /// Card / surface color (rows, buttons, search bars).
+  static const Color cardDark = Color(0xFF1E1B2E);
   static const Color cardLight = Color(0xFFF5F5F7);
-  static const Color textGrey = Color(0xFF9CA3AF);
+
+  /// Muted grey text.
+  static const Color textGrey = Color(0xFFB0B0B0);
 
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [violet, pink],
+    colors: [violet, violetDim],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -21,7 +29,7 @@ class AppTheme {
       scaffoldBackgroundColor: scaffoldBlack,
       colorScheme: const ColorScheme.dark(
         primary: violet,
-        secondary: pink,
+        secondary: violet,
         surface: cardDark,
         onSurface: Colors.white,
       ),
@@ -30,20 +38,19 @@ class AppTheme {
         backgroundColor: scaffoldBlack,
         foregroundColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: 20,
+        ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: scaffoldBlack,
-        selectedItemColor: violet,
-        unselectedItemColor: textGrey,
-        type: BottomNavigationBarType.fixed,
-        elevation: 8,
-      ),
+      iconTheme: const IconThemeData(color: Colors.white),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: cardDark,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         hintStyle: const TextStyle(color: textGrey),
@@ -53,52 +60,73 @@ class AppTheme {
         contentTextStyle: TextStyle(color: Colors.white),
         behavior: SnackBarBehavior.floating,
       ),
+      dialogTheme: const DialogThemeData(backgroundColor: cardDark),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: cardDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        textColor: Colors.white,
+        iconColor: Colors.white,
+      ),
     );
   }
 
-  static ThemeData light() {
-    final base = ThemeData.light(useMaterial3: true);
-    return base.copyWith(
-      scaffoldBackgroundColor: Colors.white,
-      colorScheme: const ColorScheme.light(
-        primary: violet,
-        secondary: pink,
-        surface: cardLight,
-        onSurface: Colors.black,
-      ),
-      cardColor: cardLight,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: false,
-      ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Colors.white,
-        selectedItemColor: violet,
-        unselectedItemColor: textGrey,
-        type: BottomNavigationBarType.fixed,
-        elevation: 8,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: cardLight,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        hintStyle: const TextStyle(color: textGrey),
-      ),
-      snackBarTheme: const SnackBarThemeData(
-        backgroundColor: Color(0xFF1F2937),
-        contentTextStyle: TextStyle(color: Colors.white),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
+  static ThemeData light() => dark(); // App is dark-only by design.
 }
 
-/// Big call-to-action button with the violet->pink gradient.
+/// Explicit text styles — never rely on theme defaults for text color.
+class AppText {
+  static const TextStyle title = TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.w700,
+    fontSize: 17,
+    height: 1.3,
+  );
+  static const TextStyle titleLarge = TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.w800,
+    fontSize: 22,
+  );
+  static const TextStyle pageTitle = TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.w700,
+    fontSize: 20,
+  );
+  static const TextStyle artist = TextStyle(
+    color: AppTheme.violet,
+    fontWeight: FontWeight.w600,
+    fontSize: 14,
+  );
+  static const TextStyle body = TextStyle(
+    color: Color(0xFFB0B0B0),
+    fontSize: 14,
+  );
+  static const TextStyle bodyWhite = TextStyle(
+    color: Colors.white,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+  );
+  static const TextStyle hint = TextStyle(
+    color: Color(0xFFB0B0B0),
+    fontSize: 15,
+  );
+  static const TextStyle sectionTitle = TextStyle(
+    color: Colors.white,
+    fontWeight: FontWeight.w800,
+    fontSize: 21,
+  );
+  static const TextStyle viewLink = TextStyle(
+    color: AppTheme.violet,
+    fontWeight: FontWeight.w600,
+    fontSize: 15,
+  );
+  static const TextStyle navLabel = TextStyle(fontSize: 12);
+}
+
+/// Big call-to-action button with the violet gradient.
 class GradientButton extends StatelessWidget {
   final String label;
   final IconData icon;

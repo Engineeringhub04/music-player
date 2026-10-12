@@ -2,19 +2,37 @@ import 'package:flutter/material.dart';
 
 import '../models/video_info.dart';
 import '../services/api_client.dart';
+import '../services/download_manager.dart';
+import '../services/history_service.dart';
+import '../services/library_service.dart';
+import '../services/player_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
-import '../widgets/video_card.dart';
+import '../widgets/app_widgets.dart';
+import '../widgets/download_sheet.dart';
 
-/// Trending grid (2 columns), pull-to-refresh, error + empty states.
+/// Home: "Discover Great Music", search bar, Top Music Videos (trending API),
+/// Top Artists, Top Playlists.
 class HomeScreen extends StatefulWidget {
   final SettingsService settings;
+  final DownloadManager downloads;
+  final HistoryService history;
+  final LibraryService library;
+  final PlayerService player;
   final void Function(VideoInfo video) onVideoTap;
+  final VoidCallback onSearchTap;
+  final VoidCallback onViewAllTrending;
 
   const HomeScreen({
     super.key,
     required this.settings,
+    required this.downloads,
+    required this.history,
+    required this.library,
+    required this.player,
     required this.onVideoTap,
+    required this.onSearchTap,
+    required this.onViewAllTrending,
   });
 
   @override
@@ -22,7 +40,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<VideoInfo>? _videos;
+  List<VideoInfo>? _trending;
   String? _error;
   bool _loading = true;
 
@@ -41,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final videos = await widget.settings.apiClient.trending();
       if (!mounted) return;
       setState(() {
-        _videos = videos;
+        _trending = videos;
         _loading = false;
       });
     } on ApiException catch (e) {
@@ -59,112 +77,229 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _play(VideoInfo v) {
+    widget.library.addRecent(v);
+    widget.player.play(v, queue: _trending ?? [v]);
+  }
+
+  void _download(VideoInfo v) {
+    showDownloadSheet(
+      context,
+      video: v,
+      settings: widget.settings,
+      downloads: widget.downloads,
+      history: widget.history,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.play_circle_fill, color: AppTheme.violet, size: 28),
-            SizedBox(width: 8),
-            Text(
-              'Music Player',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
-            ),
-          ],
+      backgroundColor: AppTheme.scaffoldBlack,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          color: AppTheme.violet,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              const Center(
+                child: Text('Discover Great Music', style: AppText.pageTitle),
+              ),
+              const SizedBox(height: 14),
+              SearchBarField(
+                hint: 'Search songs..',
+                readOnly: true,
+                onTap: widget.onSearchTap,
+              ),
+              const SizedBox(height: 22),
+              SectionHeader(
+                title: 'Top Music Videos',
+                onViewTap: widget.onViewAllTrending,
+              ),
+              const SizedBox(height: 12),
+              _trendingSection(),
+              const SizedBox(height: 22),
+              const SectionHeader(title: 'Top Artists'),
+              const SizedBox(height: 12),
+              _artistsRow(),
+              const SizedBox(height: 22),
+              const SectionHeader(title: 'Top Playlists'),
+              const SizedBox(height: 12),
+              _playlistsRow(),
+            ],
+          ),
         ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        color: AppTheme.violet,
-        child: _buildBody(),
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _trendingSection() {
     if (_loading) {
-      return GridView.builder(
-        padding: const EdgeInsets.all(12),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 16,
-          childAspectRatio: 0.78,
-        ),
-        itemCount: 8,
-        itemBuilder: (c, _) => Container(
-          decoration: BoxDecoration(
-            color: AppTheme.cardDark,
-            borderRadius: BorderRadius.circular(12),
+      return SizedBox(
+        height: 200,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: 3,
+          separatorBuilder: (_, __) => const SizedBox(width: 14),
+          itemBuilder: (c, _) => Container(
+            width: 220,
+            decoration: BoxDecoration(
+              color: AppTheme.cardDark,
+              borderRadius: BorderRadius.circular(14),
+            ),
           ),
         ),
       );
     }
     if (_error != null) {
-      return ListView(
-        children: [
-          SizedBox(height: MediaQuery.of(context).size.height * 0.25),
-          const Icon(
-            Icons.cloud_off_outlined,
-            size: 64,
-            color: AppTheme.textGrey,
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.cardDark,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.cloud_off_outlined,
+              color: AppTheme.textGrey,
+              size: 40,
+            ),
+            const SizedBox(height: 8),
+            Text(
               _error!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textGrey),
+              style: AppText.body,
             ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: ElevatedButton.icon(
+            const SizedBox(height: 10),
+            ElevatedButton(
               onPressed: _load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.violet,
                 foregroundColor: Colors.white,
               ),
+              child: const Text('Retry'),
             ),
-          ),
-        ],
+          ],
+        ),
       );
     }
-    final videos = _videos ?? [];
+    final videos = _trending ?? [];
     if (videos.isEmpty) {
-      return ListView(
-        children: const [
-          SizedBox(height: 120),
-          Icon(
-            Icons.video_library_outlined,
-            size: 64,
-            color: AppTheme.textGrey,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'No trending videos right now.\nPull down to refresh.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textGrey),
-          ),
-        ],
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Text(
+          'No trending videos right now.\nPull down to refresh.',
+          textAlign: TextAlign.center,
+          style: AppText.body,
+        ),
       );
     }
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.78,
+    return SizedBox(
+      height: 208,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: videos.length.clamp(0, 10),
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        itemBuilder: (c, i) {
+          final v = videos[i];
+          return VideoHCard(
+            video: v,
+            onTap: () => _play(v),
+            onDownload: () => _download(v),
+          );
+        },
       ),
-      itemCount: videos.length,
-      itemBuilder: (c, i) => VideoCard(
-        video: videos[i],
-        onTap: () => widget.onVideoTap(videos[i]),
+    );
+  }
+
+  Widget _artistsRow() {
+    final videos = _trending ?? [];
+    // Derive artists from trending channels (unique, with thumbnails).
+    final seen = <String>{};
+    final artists = <VideoInfo>[];
+    for (final v in videos) {
+      final name = v.channelName.trim();
+      if (name.isNotEmpty && seen.add(name.toLowerCase())) {
+        artists.add(v);
+      }
+      if (artists.length >= 8) break;
+    }
+    if (artists.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Text('Artists will appear here.', style: AppText.body),
+      );
+    }
+    return SizedBox(
+      height: 150,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: artists.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        itemBuilder: (c, i) {
+          final a = artists[i];
+          return ArtistCircle(
+            name: a.channelName,
+            imageUrl: a.thumbnailUrl,
+            onTap: () => _play(a),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _playlistsRow() {
+    final defaults = [
+      ("80's Vibes", Icons.music_note),
+      ("90's Rewind", Icons.music_note),
+      ("Hits: 00's", Icons.music_note),
+    ];
+    return SizedBox(
+      height: 96,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: defaults.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (c, i) {
+          final d = defaults[i];
+          return Container(
+            width: 170,
+            decoration: BoxDecoration(
+              color: AppTheme.cardDark,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {},
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.queue_music,
+                    color: AppTheme.violet,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      d.$1,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

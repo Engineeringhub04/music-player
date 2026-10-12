@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../models/video_info.dart';
 import '../services/download_manager.dart';
 import '../services/history_service.dart';
+import '../services/library_service.dart';
 import '../services/settings_service.dart';
 import '../services/storage_service.dart';
 import '../theme.dart';
@@ -18,6 +19,7 @@ class LibraryScreen extends StatefulWidget {
   final SettingsService settings;
   final DownloadManager downloads;
   final HistoryService history;
+  final LibraryService library;
   final VoidCallback onSettingsChanged;
 
   const LibraryScreen({
@@ -26,6 +28,7 @@ class LibraryScreen extends StatefulWidget {
     required this.settings,
     required this.downloads,
     required this.history,
+    required this.library,
     required this.onSettingsChanged,
   });
 
@@ -213,6 +216,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 builder: (_) => SettingsScreen(
                   settings: widget.settings,
                   storage: widget.storage,
+                  library: widget.library,
                   onChanged: () {
                     widget.onSettingsChanged();
                     setState(() {});

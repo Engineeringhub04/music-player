@@ -144,6 +144,52 @@ def trending(x_api_key: str | None = Header(default=None, alias="X-API-Key")):
     return {"results": _parse_flat_results(proc.stdout)}
 
 
+@app.post("/playlist")
+def playlist(url: str = Query(..., description="YouTube playlist URL"),
+             x_api_key: str | None = Header(default=None, alias="X-API-Key")):
+    _check_key(x_api_key)
+    # Playlist expansion: same flags as _run_ydl but WITHOUT --no-playlist.
+    # Mix/tab playlists are heavy multi-page API fetches and this egress
+    # proxy truncates reads intermittently (IncompleteRead), so retry hard.
+    ydl = [a for a in YDL if a != "--no-playlist"]
+    ydl += ["--retries", "10", "--socket-timeout", "30", "--extractor-retries", "3"]
+    last = None
+    # Try the android player client first (dodges the web bot-check), then
+    # fall back to the default client — sometimes one works while the other
+    # is being challenged for this egress IP.
+    for client in (ANDROID_CLIENT, []):
+        for attempt in range(2):
+            proc = subprocess.run(
+                ydl + client + ["--flat-playlist", "--dump-json", url],
+                capture_output=True, text=True, timeout=300,
+            )
+            last = proc
+            if proc.returncode == 0:
+                break
+            if attempt == 0:
+                time.sleep(10)
+        if last is not None and last.returncode == 0:
+            break
+    if last is None or last.returncode != 0:
+        raise HTTPException(status_code=502, detail="yt-dlp playlist fetch failed")
+    results = []
+    title = ""
+    for line in last.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if entry.get("_type") == "playlist" or not entry.get("id"):
+            continue
+        if not title:
+            title = entry.get("playlist_title") or entry.get("title") or ""
+        results.append(_entry_to_result(entry))
+    return {"title": title, "results": results}
+
+
 @app.post("/formats")
 def formats(url: str = Query(..., description="YouTube video URL"),
             x_api_key: str | None = Header(default=None, alias="X-API-Key")):
