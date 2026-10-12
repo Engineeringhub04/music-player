@@ -1,0 +1,39 @@
+name: Build IPA (manual)
+
+# MANUAL TRIGGER ONLY — the user explicitly forbade auto-build on push.
+# Produces an UNSIGNED .ipa (no codesign) for sideloading via TrollStore etc.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # NOTE: `flutter build ipa --no-codesign` silently skips the IPA export,
+      # so build the .app bundle and zip the Payload folder manually.
+      - name: Build iOS app (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -r MusicPlayer-unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-player-unsigned-ipa
+          path: MusicPlayer-unsigned.ipa
+          retention-days: 14

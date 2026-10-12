@@ -1,0 +1,13 @@
+[Unit]
+Description=Music Player extractor server (yt-dlp FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hatch/workspace/music-player/server
+ExecStart=/home/hatch/workspace/music-player/server/venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8001
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
