@@ -254,7 +254,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return Scaffold(
       backgroundColor:
-          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBlack,
+          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -527,7 +527,7 @@ class _ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card =
-        AppTheme.isLight ? AppTheme.cardLight : AppTheme.cardDark;
+        AppTheme.isLight ? AppTheme.cardLight : AppTheme.card;
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return InkWell(
       onTap: onTap,
@@ -623,7 +623,7 @@ class _PlaylistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card =
-        AppTheme.isLight ? AppTheme.cardLight : AppTheme.cardDark;
+        AppTheme.isLight ? AppTheme.cardLight : AppTheme.card;
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return InkWell(
       onTap: onTap,
@@ -723,7 +723,7 @@ class VideoListScreen extends StatelessWidget {
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return Scaffold(
       backgroundColor:
-          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBlack,
+          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -792,7 +792,7 @@ class _PlaylistListScreen extends StatelessWidget {
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return Scaffold(
       backgroundColor:
-          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBlack,
+          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBg,
       body: SafeArea(
         child: Column(
           children: [

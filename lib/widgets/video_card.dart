@@ -33,7 +33,7 @@ class VideoCard extends StatelessWidget {
                 children: [
                   video.thumbnailUrl.isEmpty
                       ? Container(
-                          color: AppTheme.cardDark,
+                          color: AppTheme.card,
                           child: const Icon(
                             Icons.play_circle_outline,
                             color: AppTheme.textGrey,
@@ -44,12 +44,12 @@ class VideoCard extends StatelessWidget {
                           imageUrl: video.thumbnailUrl,
                           fit: BoxFit.cover,
                           placeholder: (c, _) => Shimmer.fromColors(
-                            baseColor: AppTheme.cardDark,
+                            baseColor: AppTheme.card,
                             highlightColor: const Color(0xFF2A2A2A),
-                            child: Container(color: AppTheme.cardDark),
+                            child: Container(color: AppTheme.card),
                           ),
                           errorWidget: (c, _, _) => Container(
-                            color: AppTheme.cardDark,
+                            color: AppTheme.card,
                             child: const Icon(
                               Icons.broken_image_outlined,
                               color: AppTheme.textGrey,
@@ -144,7 +144,7 @@ class VideoRow extends StatelessWidget {
                     children: [
                       video.thumbnailUrl.isEmpty
                           ? Container(
-                              color: AppTheme.cardDark,
+                              color: AppTheme.card,
                               child: const Icon(
                                 Icons.play_circle_outline,
                                 color: AppTheme.textGrey,
@@ -154,13 +154,13 @@ class VideoRow extends StatelessWidget {
                               imageUrl: video.thumbnailUrl,
                               fit: BoxFit.cover,
                               placeholder: (c, _) => Shimmer.fromColors(
-                                baseColor: AppTheme.cardDark,
+                                baseColor: AppTheme.card,
                                 highlightColor: const Color(0xFF2A2A2A),
                                 child:
-                                    Container(color: AppTheme.cardDark),
+                                    Container(color: AppTheme.card),
                               ),
                               errorWidget: (c, _, _) => Container(
-                                color: AppTheme.cardDark,
+                                color: AppTheme.card,
                                 child: const Icon(
                                   Icons.broken_image_outlined,
                                   color: AppTheme.textGrey,

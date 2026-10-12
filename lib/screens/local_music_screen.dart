@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../models/video_info.dart';
@@ -11,28 +13,30 @@ import '../theme.dart';
 import '../widgets/app_widgets.dart';
 import '../widgets/glass_popup.dart';
 
-/// One downloaded file enriched with library metadata when available.
+/// One local track: absolute file path + metadata.
 class _LocalTrack {
-  final StoredFile file;
+  final String path;
   final String title;
   final String artist;
   final String thumbnailUrl;
+  final DateTime modified;
 
   _LocalTrack({
-    required this.file,
+    required this.path,
     required this.title,
     required this.artist,
     required this.thumbnailUrl,
+    required this.modified,
   });
 
   VideoInfo toVideoInfo() => VideoInfo(
-        id: file.path,
+        id: path,
         title: title,
         thumbnailUrl: thumbnailUrl,
         durationSecs: 0,
         channelName: artist,
         viewCount: 0,
-        videoUrl: file.path,
+        videoUrl: path,
         isLocal: true,
       );
 }
@@ -72,14 +76,54 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
   @override
   void initState() {
     super.initState();
+    widget.library.addListener(_onLibraryChanged);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    widget.library.removeListener(_onLibraryChanged);
+    super.dispose();
+  }
+
+  void _onLibraryChanged() {
+    // A download may have completed while this screen is open.
     _refresh();
   }
 
   Future<void> _refresh() async {
     setState(() => _loading = true);
     try {
-      final files = await widget.storage.listFiles();
-      final tracks = files.map(_enrich).toList();
+      final tracks = <_LocalTrack>[];
+      final seen = <String>{};
+      // 1. Registered downloads (persisted in LibraryService) — these have
+      // proper title/artist/thumbnail metadata.
+      for (final v in widget.library.localTracks) {
+        final f = File(v.videoUrl);
+        if (!await f.exists()) continue;
+        final stat = await f.stat();
+        seen.add(v.videoUrl);
+        tracks.add(_LocalTrack(
+          path: v.videoUrl,
+          title: v.title.isEmpty ? _baseName(v.videoUrl) : v.title,
+          artist: v.channelName.isEmpty ? 'Unknown artist' : v.channelName,
+          thumbnailUrl: v.thumbnailUrl,
+          modified: stat.modified,
+        ));
+      }
+      // 2. Files on disk never registered (older downloads): keep showing
+      // them with best-effort metadata from history.
+      for (final sf in await widget.storage.listFiles()) {
+        if (seen.contains(sf.path)) continue;
+        final (title, artist, thumb) = _enrich(sf);
+        tracks.add(_LocalTrack(
+          path: sf.path,
+          title: title,
+          artist: artist,
+          thumbnailUrl: thumb,
+          modified: sf.modified,
+        ));
+      }
       if (!mounted) return;
       setState(() {
         _tracks = tracks;
@@ -91,8 +135,14 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
     }
   }
 
+  String _baseName(String path) {
+    final name = path.split(Platform.pathSeparator).last;
+    return name.replaceAll(RegExp(r'\.[^.]+$'), '');
+  }
+
   /// Match a file to its history entry (title/artist/thumbnail).
-  _LocalTrack _enrich(StoredFile f) {
+  /// Returns (title, artist, thumbnailUrl).
+  (String, String, String) _enrich(StoredFile f) {
     final base = f.name.replaceAll(RegExp(r'\.[^.]+$'), '');
     for (final h in widget.history.downloaded) {
       final clean =
@@ -100,20 +150,10 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
       if (clean.isNotEmpty &&
           base.toLowerCase().startsWith(clean.substring(
               0, clean.length > 40 ? 40 : clean.length))) {
-        return _LocalTrack(
-          file: f,
-          title: h.title,
-          artist: 'Unknown artist',
-          thumbnailUrl: h.thumbnailUrl,
-        );
+        return (h.title, 'Unknown artist', h.thumbnailUrl);
       }
     }
-    return _LocalTrack(
-      file: f,
-      title: base,
-      artist: 'Unknown artist',
-      thumbnailUrl: '',
-    );
+    return (base, 'Unknown artist', '');
   }
 
   void _applySort() {
@@ -123,7 +163,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
             a.title.toLowerCase().compareTo(b.title.toLowerCase()));
       } else {
         _tracks.sort(
-            (a, b) => b.file.modified.compareTo(a.file.modified));
+            (a, b) => b.modified.compareTo(a.modified));
       }
     });
   }
@@ -240,10 +280,10 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
             final ok = await showIosConfirm(
               context,
               title: 'Delete file?',
-              message: t.file.name,
+              message: t.title,
             );
             if (ok) {
-              await widget.storage.delete(t.file);
+              await _deletePath(t.path);
               await _refresh();
             }
           },
@@ -252,11 +292,20 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
     );
   }
 
+  /// Delete the file at [path] and drop its Local Music registration.
+  Future<void> _deletePath(String path) async {
+    final f = File(path);
+    if (await f.exists()) {
+      await f.delete();
+    }
+    await widget.library.removeLocalTrack(path);
+  }
+
   void _openProgress() {
     showModalBottomSheet(
       context: context,
       backgroundColor:
-          AppTheme.isLight ? Colors.white : const Color(0xFF1C1C1E),
+          AppTheme.isLight ? Colors.white : AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(24)),
@@ -272,8 +321,8 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
       message: 'This cannot be undone.',
     );
     if (!ok) return;
-    for (final t in _tracks.where((e) => _selected.contains(e.file.path))) {
-      await widget.storage.delete(t.file);
+    for (final t in _tracks.where((e) => _selected.contains(e.path))) {
+      await _deletePath(t.path);
     }
     setState(() {
       _editMode = false;
@@ -287,7 +336,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return Scaffold(
       backgroundColor:
-          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBlack,
+          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBg,
       body: SafeArea(
         child: Column(
           children: [
@@ -393,16 +442,16 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
                                 onMenu: () => _trackMenu(t),
                                 showCheck: _editMode,
                                 checked: _selected
-                                    .contains(t.file.path),
+                                    .contains(t.path),
                                 onCheckToggle: () {
                                   setState(() {
                                     if (_selected
-                                        .contains(t.file.path)) {
+                                        .contains(t.path)) {
                                       _selected
-                                          .remove(t.file.path);
+                                          .remove(t.path);
                                     } else {
                                       _selected
-                                          .add(t.file.path);
+                                          .add(t.path);
                                     }
                                   });
                                 },

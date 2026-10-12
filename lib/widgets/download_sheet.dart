@@ -19,7 +19,7 @@ Future<void> showDownloadSheet(
 }) {
   return showModalBottomSheet(
     context: context,
-    backgroundColor: AppTheme.cardDark,
+    backgroundColor: AppTheme.card,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -87,6 +87,7 @@ class _DownloadSheetState extends State<_DownloadSheet> {
         title:
             '${widget.video.title} [${format.label.isEmpty ? format.formatId : format.label}]',
         audio: audio,
+        video: widget.video,
         requiresWiFi: widget.settings.wifiOnly,
         expectedBytes: format.fileSize,
       );
@@ -198,9 +199,9 @@ class _DownloadSheetState extends State<_DownloadSheet> {
     return ListView.separated(
       shrinkWrap: true,
       itemCount: formats.length,
-      separatorBuilder: (_, __) => const Divider(
+      separatorBuilder: (_, __) => Divider(
         height: 1,
-        color: Colors.white10,
+        color: AppTheme.faint,
       ),
       itemBuilder: (c, i) {
         final f = formats[i];
@@ -214,8 +215,8 @@ class _DownloadSheetState extends State<_DownloadSheet> {
           ),
           title: Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.fg,
               fontWeight: FontWeight.w600,
             ),
           ),

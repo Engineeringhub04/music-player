@@ -264,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               TextField(
                 controller: _urlController,
                 keyboardType: TextInputType.url,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.fg),
                 decoration: const InputDecoration(
                   labelText: 'Server base URL',
                   labelStyle: TextStyle(color: AppTheme.textGrey),
@@ -276,7 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               TextField(
                 controller: _keyController,
                 obscureText: _obscureKey,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.fg),
                 decoration: InputDecoration(
                   labelText: 'API key',
                   labelStyle:
@@ -326,7 +326,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               size: 18),
                       label: const Text('Test'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppTheme.fg,
                         side:
                             const BorderSide(color: AppTheme.primary),
                         padding: const EdgeInsets.symmetric(
@@ -362,7 +362,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final s = widget.settings;
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBlack,
+      backgroundColor: AppTheme.scaffoldBg,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -438,8 +438,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Clear Cache',
               trailing: Text(
                 _cacheSize,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.fg,
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                 ),
@@ -601,7 +601,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: Text(
                       q,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.fg,
                         fontWeight: selected
                             ? FontWeight.w700
                             : FontWeight.normal,
@@ -630,11 +630,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
+        backgroundColor: AppTheme.surface,
         title: Text(
           title,
           style:
-              const TextStyle(color: Colors.white),
+              TextStyle(color: AppTheme.fg),
         ),
         content: Text(body, style: AppText.body),
         actions: [

@@ -72,7 +72,7 @@ class _GlassPopupDialog extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppTheme.isLight
                         ? Colors.white.withValues(alpha: 0.72)
-                        : const Color(0xFF2C2C2E)
+                        : AppTheme.card
                             .withValues(alpha: 0.72),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(

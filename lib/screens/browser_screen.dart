@@ -131,7 +131,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       if (!mounted) return;
       showModalBottomSheet(
         context: context,
-        backgroundColor: AppTheme.cardDark,
+        backgroundColor: AppTheme.card,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -167,6 +167,15 @@ class _BrowserScreenState extends State<BrowserScreen> {
                         url: url,
                         title: title,
                         audio: isAudio,
+                        video: VideoInfo(
+                          id: url,
+                          title: title,
+                          thumbnailUrl: '',
+                          durationSecs: 0,
+                          channelName: '',
+                          viewCount: 0,
+                          videoUrl: url,
+                        ),
                         requiresWiFi: widget.settings.wifiOnly,
                       );
                       if (mounted) {

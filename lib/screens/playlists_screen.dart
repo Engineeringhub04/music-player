@@ -164,7 +164,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return Scaffold(
       backgroundColor:
-          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBlack,
+          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBg,
       body: SafeArea(
         child: ListenableBuilder(
           listenable: widget.library,
@@ -261,7 +261,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
     required VoidCallback onTap,
   }) {
     final card =
-        AppTheme.isLight ? Colors.white : AppTheme.cardDark;
+        AppTheme.isLight ? Colors.white : AppTheme.card;
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return InkWell(
       onTap: onTap,

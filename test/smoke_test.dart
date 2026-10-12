@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:music_player/main.dart';
+import 'package:music_player/services/audio_handler.dart';
 import 'package:music_player/services/download_manager.dart';
 import 'package:music_player/services/history_service.dart';
 import 'package:music_player/services/library_service.dart';
@@ -24,7 +25,10 @@ void main() {
     final storage = StorageService();
     final history = HistoryService();
     final library = LibraryService();
-    final player = PlayerService(settings: settings);
+    final player = PlayerService(
+      settings: settings,
+      audioHandler: MusicAudioHandler(),
+    );
 
     await tester.pumpWidget(
       MusicPlayerApp(

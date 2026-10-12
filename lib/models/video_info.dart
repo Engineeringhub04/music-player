@@ -70,6 +70,7 @@ class MediaFormat {
   final String ext; // mp4, m4a, webm...
   final int fileSize; // bytes, -1 if unknown
   final bool hasVideo;
+  final bool hasAudio;
   final String? directUrl; // server may provide a direct URL
 
   const MediaFormat({
@@ -78,6 +79,7 @@ class MediaFormat {
     required this.ext,
     this.fileSize = -1,
     this.hasVideo = true,
+    this.hasAudio = true,
     this.directUrl,
   });
 
@@ -90,6 +92,14 @@ class MediaFormat {
       return int.tryParse(v.toString()) ?? -1;
     }
 
+    // Server sends yt-dlp vcodec/acodec ("none" when absent).
+    final vcodec = str(json['vcodec']);
+    final acodec = str(json['acodec']);
+    final hasVideo = json['hasVideo'] ?? json['has_video'] ??
+        (vcodec.isNotEmpty ? vcodec != 'none' : true);
+    final hasAudio = json['hasAudio'] ?? json['has_audio'] ??
+        (acodec.isNotEmpty ? acodec != 'none' : true);
+
     return MediaFormat(
       formatId: str(json['formatId'] ?? json['format_id'] ?? json['id']),
       label: str(
@@ -97,10 +107,15 @@ class MediaFormat {
       ),
       ext: str(json['ext'] ?? 'mp4'),
       fileSize: num(json['fileSize'] ?? json['filesize'] ?? json['size']),
-      hasVideo: json['hasVideo'] ?? json['has_video'] ?? true,
+      hasVideo: hasVideo is bool ? hasVideo : true,
+      hasAudio: hasAudio is bool ? hasAudio : true,
       directUrl: json['directUrl'] ?? json['direct_url'] ?? json['url'],
     );
   }
+
+  /// True for progressive streams (video + audio in one URL) — playable
+  /// with sound in video_player.
+  bool get isProgressive => hasVideo && hasAudio;
 }
 
 /// 3725 -> "1:02:05", 95 -> "1:35"

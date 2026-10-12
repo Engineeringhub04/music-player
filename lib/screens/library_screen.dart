@@ -70,7 +70,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void _longPressMenu(StoredFile f) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -124,7 +124,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     showDialog(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
+        backgroundColor: AppTheme.card,
         title: const Text('Rename file'),
         content: TextField(
           controller: controller,
@@ -162,7 +162,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     showDialog(
       context: context,
       builder: (c) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
+        backgroundColor: AppTheme.card,
         title: const Text('Delete file?'),
         content: Text(
           f.name,
@@ -282,7 +282,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Widget _storageBar() {
     return Card(
-      color: AppTheme.cardDark,
+      color: AppTheme.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
       ),
@@ -334,7 +334,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.cardDark,
+          color: AppTheme.card,
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.all(12),

@@ -48,13 +48,17 @@ class UserPlaylist {
       };
 }
 
-/// Playlists + favorites, persisted as JSON in the app docs dir.
+/// Playlists + favorites + local tracks, persisted as JSON in the app docs dir.
 class LibraryService extends ChangeNotifier {
   static const _fileName = 'music_player_library.json';
 
   final List<UserPlaylist> playlists = [];
   final List<VideoInfo> favorites = [];
   final List<VideoInfo> recentlyPlayed = [];
+
+  /// Downloaded tracks registered on completion (isLocal=true,
+  /// videoUrl = absolute file path). Persisted — survives restarts.
+  final List<VideoInfo> localTracks = [];
   bool _ready = false;
 
   bool get ready => _ready;
@@ -88,6 +92,12 @@ class LibraryService extends ChangeNotifier {
                   .add(VideoInfo.fromJson(Map<String, dynamic>.from(e)));
             }
           }
+          for (final e in (decoded['localTracks'] as List? ?? [])) {
+            if (e is Map) {
+              localTracks
+                  .add(VideoInfo.fromJson(Map<String, dynamic>.from(e)));
+            }
+          }
         }
       }
     } catch (_) {
@@ -104,6 +114,7 @@ class LibraryService extends ChangeNotifier {
         'playlists': playlists.map((p) => p.toJson()).toList(),
         'favorites': favorites.map((v) => v.toJson()).toList(),
         'recentlyPlayed': recentlyPlayed.map((v) => v.toJson()).toList(),
+        'localTracks': localTracks.map((v) => v.toJson()).toList(),
       }));
     } catch (_) {}
   }
@@ -180,6 +191,27 @@ class LibraryService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---------- Local tracks (downloads) ----------
+
+  /// Register a finished download. Replaces any previous entry for the
+  /// same file path. Persisted, so it survives app restarts.
+  Future<void> registerLocalTrack(VideoInfo track) async {
+    localTracks.removeWhere((e) => e.videoUrl == track.videoUrl);
+    localTracks.insert(0, track);
+    await _save();
+    notifyListeners();
+  }
+
+  /// Remove a local track by its file path (e.g. after file deletion).
+  Future<void> removeLocalTrack(String filePath) async {
+    final n = localTracks.length;
+    localTracks.removeWhere((e) => e.videoUrl == filePath);
+    if (localTracks.length != n) {
+      await _save();
+      notifyListeners();
+    }
+  }
+
   // ---------- Backup / restore ----------
 
   Future<String> exportJson() async {
@@ -193,6 +225,7 @@ class LibraryService extends ChangeNotifier {
     playlists.clear();
     favorites.clear();
     recentlyPlayed.clear();
+    localTracks.clear();
     await init();
   }
 
@@ -201,6 +234,7 @@ class LibraryService extends ChangeNotifier {
     playlists.clear();
     favorites.clear();
     recentlyPlayed.clear();
+    localTracks.clear();
     await _save();
     notifyListeners();
   }

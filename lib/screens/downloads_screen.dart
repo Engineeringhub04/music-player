@@ -104,7 +104,7 @@ class _ActiveTile extends StatelessWidget {
       DlStatus.canceled => 'Canceled',
     };
     return Card(
-      color: AppTheme.cardDark,
+      color: AppTheme.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
       ),
@@ -159,7 +159,7 @@ class _ActiveTile extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: entry.progress < 0 ? null : entry.progress.clamp(0.0, 1.0),
                 minHeight: 6,
-                backgroundColor: Colors.white10,
+                backgroundColor: AppTheme.faint,
                 valueColor:
                     const AlwaysStoppedAnimation<Color>(AppTheme.primary),
               ),
@@ -209,7 +209,7 @@ class _DoneTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: AppTheme.cardDark,
+      color: AppTheme.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
       ),

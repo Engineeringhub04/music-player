@@ -192,7 +192,7 @@ class _PlaylistDetailScreenState
         .toList();
     return Scaffold(
       backgroundColor:
-          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBlack,
+          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBg,
       body: SafeArea(
         child: ListenableBuilder(
           listenable: widget.library,

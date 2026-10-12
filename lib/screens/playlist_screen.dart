@@ -123,6 +123,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
           url: url,
           title: '${video.title} [${best.label}]',
           audio: false,
+          video: video,
           requiresWiFi: widget.settings.wifiOnly,
         );
         await widget.history.addDownloaded(video);
@@ -209,7 +210,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                   LinearProgressIndicator(
                     value: _batchProgress,
                     color: AppTheme.primary,
-                    backgroundColor: Colors.white10,
+                    backgroundColor: AppTheme.faint,
                   ),
                 ],
               ),

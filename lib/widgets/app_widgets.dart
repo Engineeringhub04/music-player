@@ -6,8 +6,10 @@ import '../models/video_info.dart';
 import '../services/library_service.dart';
 import '../theme.dart';
 
-/// Rounded search bar like the reference app.
-class SearchBarField extends StatelessWidget {
+/// Rounded search bar like the reference app:
+/// 12px radius, subtle fill (#2C2C2E dark / #E8E8ED light),
+/// search icon + auto clear (x) button, comfortable padding.
+class SearchBarField extends StatefulWidget {
   final String hint;
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
@@ -28,32 +30,102 @@ class SearchBarField extends StatelessWidget {
   });
 
   @override
+  State<SearchBarField> createState() => _SearchBarFieldState();
+}
+
+class _SearchBarFieldState extends State<SearchBarField> {
+  late final TextEditingController _internal;
+  TextEditingController get _controller =>
+      widget.controller ?? _internal;
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _internal = TextEditingController();
+    _hasText = _controller.text.isNotEmpty;
+    _controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(SearchBarField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.removeListener(_onTextChanged);
+      _controller.addListener(_onTextChanged);
+      _onTextChanged();
+    }
+  }
+
+  void _onTextChanged() {
+    final has = _controller.text.isNotEmpty;
+    if (has != _hasText && mounted) {
+      setState(() => _hasText = has);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onTextChanged);
+    _internal.dispose();
+    super.dispose();
+  }
+
+  void _clear() {
+    _controller.clear();
+    widget.onChanged?.call('');
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.isLight
-            ? AppTheme.cardLight
-            : AppTheme.cardDark,
-        borderRadius: BorderRadius.circular(16),
+            ? const Color(0xFFE8E8ED)
+            : AppTheme.card,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        onTap: onTap,
-        readOnly: readOnly,
-        autofocus: autofocus,
+        controller: _controller,
+        onChanged: widget.onChanged,
+        onTap: widget.onTap,
+        readOnly: widget.readOnly,
+        autofocus: widget.autofocus,
+        textInputAction: TextInputAction.search,
         style: TextStyle(
           color: AppTheme.isLight ? Colors.black : Colors.white,
-          fontSize: 15,
+          fontSize: 16,
         ),
         decoration: InputDecoration(
-          hintText: hint,
+          hintText: widget.hint,
           hintStyle: AppText.hint,
-          prefixIcon:
-              const Icon(Icons.search, color: AppTheme.textGrey),
-          suffixIcon: suffix,
+          prefixIcon: const Icon(
+            Icons.search,
+            color: AppTheme.textGrey,
+            size: 22,
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 44,
+            minHeight: 44,
+          ),
+          suffixIcon: widget.suffix ??
+              (_hasText && !widget.readOnly
+                  ? IconButton(
+                      onPressed: _clear,
+                      icon: const Icon(
+                        Icons.cancel,
+                        color: AppTheme.textGrey,
+                        size: 20,
+                      ),
+                      splashRadius: 18,
+                    )
+                  : null),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 13,
+            horizontal: 4,
+          ),
+          isDense: true,
         ),
       ),
     );
@@ -312,7 +384,7 @@ class SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final card = AppTheme.isLight ? Colors.white : AppTheme.cardDark;
+    final card = AppTheme.isLight ? Colors.white : AppTheme.card;
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -371,7 +443,7 @@ class PlaylistRowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final card = AppTheme.isLight ? Colors.white : AppTheme.cardDark;
+    final card = AppTheme.isLight ? Colors.white : AppTheme.card;
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -450,7 +522,7 @@ Future<void> showAddToListSheet(
   return showModalBottomSheet(
     context: context,
     backgroundColor:
-        AppTheme.isLight ? Colors.white : const Color(0xFF1C1C1E),
+        AppTheme.isLight ? Colors.white : AppTheme.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -563,7 +635,7 @@ class _AddToListRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final rowBg = AppTheme.isLight
         ? AppTheme.cardLight
-        : AppTheme.cardDark;
+        : AppTheme.card;
     final fg =
         AppTheme.isLight ? Colors.black : Colors.white;
     return Container(
@@ -720,7 +792,7 @@ Widget _thumb(String url) {
     return Container(
       color: AppTheme.isLight
           ? AppTheme.cardLight
-          : AppTheme.cardDark,
+          : AppTheme.card,
       child: const Center(
         child: Icon(
           Icons.music_note,
@@ -736,7 +808,7 @@ Widget _thumb(String url) {
     placeholder: (_, __) => Container(
       color: AppTheme.isLight
           ? AppTheme.cardLight
-          : AppTheme.cardDark,
+          : AppTheme.card,
       child: const Center(
         child: SizedBox(
           width: 22,
@@ -751,7 +823,7 @@ Widget _thumb(String url) {
     errorWidget: (_, __, ___) => Container(
       color: AppTheme.isLight
           ? AppTheme.cardLight
-          : AppTheme.cardDark,
+          : AppTheme.card,
       child: const Center(
         child: Icon(
           Icons.music_note,

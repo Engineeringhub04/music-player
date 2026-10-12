@@ -181,6 +181,7 @@ class _WatchScreenState extends State<WatchScreen> {
         url: url,
         title: '${widget.video.title} [${format.label}]',
         audio: false,
+        video: widget.video,
         requiresWiFi: widget.settings.wifiOnly,
       );
       await widget.history.addDownloaded(widget.video);
@@ -215,6 +216,7 @@ class _WatchScreenState extends State<WatchScreen> {
         url: url,
         title: '${widget.video.title} [MP3]',
         audio: true,
+        video: widget.video,
         requiresWiFi: widget.settings.wifiOnly,
       );
       await widget.history.addDownloaded(widget.video);
@@ -236,7 +238,7 @@ class _WatchScreenState extends State<WatchScreen> {
   void _openQualitySheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -296,7 +298,7 @@ class _WatchScreenState extends State<WatchScreen> {
   void _openDownloadSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.cardDark,
+      backgroundColor: AppTheme.card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -393,7 +395,7 @@ class _WatchScreenState extends State<WatchScreen> {
                         icon: const Icon(Icons.settings_outlined, size: 18),
                         label: Text(_selected?.label ?? 'Quality'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppTheme.fg,
                           side: const BorderSide(color: AppTheme.primary),
                           padding:
                               const EdgeInsets.symmetric(vertical: 14),

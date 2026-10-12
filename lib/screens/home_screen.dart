@@ -84,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBlack,
+      backgroundColor: AppTheme.scaffoldBg,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _load,
@@ -134,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
           itemBuilder: (c, _) => Container(
             width: 220,
             decoration: BoxDecoration(
-              color: AppTheme.cardDark,
+              color: AppTheme.card,
               borderRadius: BorderRadius.circular(14),
             ),
           ),
@@ -145,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppTheme.cardDark,
+          color: AppTheme.card,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -255,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return Container(
             width: 170,
             decoration: BoxDecoration(
-              color: AppTheme.cardDark,
+              color: AppTheme.card,
               borderRadius: BorderRadius.circular(14),
             ),
             child: InkWell(
@@ -276,8 +276,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       d.$1,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.fg,
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
                       ),

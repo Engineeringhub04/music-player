@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -14,6 +15,7 @@ import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/trending_screen.dart';
 import 'screens/watch_screen.dart';
+import 'services/audio_handler.dart';
 import 'services/download_manager.dart';
 import 'services/history_service.dart';
 import 'services/library_service.dart';
@@ -60,7 +62,44 @@ Future<void> main() async {
       debugPrint('LibraryService init failed: $e');
     }
 
-    final player = PlayerService(settings: settings);
+    // Background-capable audio engine (media notification + background
+    // playback on Android/iOS). Falls back to a plain handler if the
+    // platform service can't start — the app must never die here.
+    late final MusicAudioHandler audioHandler;
+    try {
+      audioHandler = await AudioService.init(
+        builder: () => MusicAudioHandler(),
+        config: const AudioServiceConfig(
+          androidNotificationChannelId: 'com.musicplayer.app.audio',
+          androidNotificationChannelName: 'Music Playback',
+          androidNotificationOngoing: true,
+          androidStopForegroundOnPause: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint('AudioService init failed, using plain handler: $e');
+      audioHandler = MusicAudioHandler();
+    }
+
+    final player = PlayerService(settings: settings, audioHandler: audioHandler);
+
+    // Register completed downloads into Local Music (persisted).
+    downloads.onDownloadComplete = (entry, filePath) async {
+      final v = entry.video;
+      if (v == null) return;
+      await library.registerLocalTrack(
+        VideoInfo(
+          id: v.id,
+          title: v.title,
+          thumbnailUrl: v.thumbnailUrl,
+          durationSecs: v.durationSecs,
+          channelName: v.channelName,
+          viewCount: v.viewCount,
+          videoUrl: filePath,
+          isLocal: true,
+        ),
+      );
+    };
 
     runApp(
       MusicPlayerApp(
@@ -217,18 +256,11 @@ class _MainShellState extends State<MainShell>
     return m?.group(0);
   }
 
-  void _openPlayer() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PlayerScreen(
-          player: widget.player,
-          library: widget.library,
-          settings: widget.settings,
-          downloads: widget.downloads,
-          history: widget.history,
-        ),
-      ),
-    );
+  void _setTab(int i) {
+    if (_index == i) return;
+    setState(() => _index = i);
+    // The Player tab owns the video engine; other tabs use audio-only.
+    widget.player.setPlayerTabVisible(i == 2);
   }
 
   void _goSearch() {
@@ -298,6 +330,13 @@ class _MainShellState extends State<MainShell>
         downloads: widget.downloads,
         history: widget.history,
       ),
+      PlayerScreen(
+        player: widget.player,
+        library: widget.library,
+        settings: widget.settings,
+        downloads: widget.downloads,
+        history: widget.history,
+      ),
       FavoritesScreen(
         library: widget.library,
         player: widget.player,
@@ -321,10 +360,10 @@ class _MainShellState extends State<MainShell>
   Widget _buildNav(int visibleIndex) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.scaffoldBlack,
+        color: AppTheme.scaffoldBg,
         border: Border(
           top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: AppTheme.faint,
           ),
         ),
       ),
@@ -348,19 +387,19 @@ class _MainShellState extends State<MainShell>
                 index: 1,
                 visibleIndex: visibleIndex,
               ),
-              _centerPlayerButton(),
+              _centerPlayerButton(_index == 2),
               _navItem(
                 icon: Icons.favorite_border,
                 activeIcon: Icons.favorite,
                 label: 'Favorites',
-                index: 2,
+                index: 3,
                 visibleIndex: visibleIndex,
               ),
               _navItem(
                 icon: Icons.settings_outlined,
                 activeIcon: Icons.settings,
                 label: 'Settings',
-                index: 3,
+                index: 4,
                 visibleIndex: visibleIndex,
               ),
             ],
@@ -380,7 +419,7 @@ class _MainShellState extends State<MainShell>
     final active = visibleIndex == index;
     final color = active ? AppTheme.primary : AppTheme.textGrey;
     return InkWell(
-      onTap: () => setState(() => _index = index),
+      onTap: () => _setTab(index),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding:
@@ -406,9 +445,9 @@ class _MainShellState extends State<MainShell>
   }
 
   /// Center circular button: current video thumbnail, rotating while playing.
-  Widget _centerPlayerButton() {
+  Widget _centerPlayerButton(bool active) {
     return GestureDetector(
-      onTap: _openPlayer,
+      onTap: () => _setTab(2),
       child: ListenableBuilder(
         listenable: widget.player,
         builder: (context, _) {
@@ -454,10 +493,12 @@ class _MainShellState extends State<MainShell>
             height: 58,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppTheme.cardDark,
+              color: AppTheme.card,
               border: Border.all(
-                color: AppTheme.primary.withValues(alpha: 0.6),
-                width: 2,
+                color: active
+                    ? AppTheme.primary
+                    : AppTheme.primary.withValues(alpha: 0.6),
+                width: active ? 3 : 2,
               ),
               boxShadow: [
                 BoxShadow(

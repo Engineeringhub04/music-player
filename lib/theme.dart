@@ -23,6 +23,23 @@ class AppTheme {
   /// Set by the app root before building; drives [AppText].
   static bool isLight = false;
 
+  /// Primary foreground (text/icon) color for the active theme.
+  static Color get fg => isLight ? Colors.black : Colors.white;
+
+  /// Page background for the active theme.
+  static Color get scaffoldBg => isLight ? Colors.white : scaffoldBlack;
+
+  /// Surface (sheets/dialogs) for the active theme.
+  static Color get surface => isLight ? Colors.white : surfaceDark;
+
+  /// Card/row fill for the active theme.
+  static Color get card => isLight ? cardLight : cardDark;
+
+  /// Faint overlay tint that works on both themes (for dividers, tracks).
+  static Color get faint => isLight
+      ? Colors.black.withValues(alpha: 0.08)
+      : Colors.white.withValues(alpha: 0.1);
+
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [primary, primaryDim],
     begin: Alignment.topLeft,

@@ -166,7 +166,7 @@ class _TrendingScreenState extends State<TrendingScreen> {
     return Scaffold(
       backgroundColor: AppTheme.isLight
           ? Colors.white
-          : AppTheme.scaffoldBlack,
+          : AppTheme.scaffoldBg,
       body: SafeArea(
         child: Column(
           children: [

@@ -24,9 +24,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             'History',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
-          bottom: const TabBar(
+          bottom: TabBar(
             indicatorColor: AppTheme.primary,
-            labelColor: Colors.white,
+            labelColor: AppTheme.fg,
             unselectedLabelColor: AppTheme.textGrey,
             tabs: [
               Tab(text: 'Watched'),
@@ -87,7 +87,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: AppTheme.cardDark,
+                    color: AppTheme.card,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
@@ -122,7 +122,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (c) => AlertDialog(
-                  backgroundColor: AppTheme.cardDark,
+                  backgroundColor: AppTheme.card,
                   title: const Text('Clear history?'),
                   content: const Text(
                     'This cannot be undone.',

@@ -132,6 +132,7 @@ Future<void> quickDownload(
       title:
           '${video.title} [${best.label.isEmpty ? best.formatId : best.label}]',
       audio: !best.hasVideo,
+      video: video,
       requiresWiFi: deps.settings.wifiOnly,
       expectedBytes: best.fileSize,
     );

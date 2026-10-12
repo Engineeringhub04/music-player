@@ -44,7 +44,7 @@ class RecentlyPlayedScreen extends StatelessWidget {
     final fg = AppTheme.isLight ? Colors.black : Colors.white;
     return Scaffold(
       backgroundColor:
-          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBlack,
+          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBg,
       body: SafeArea(
         child: ListenableBuilder(
           listenable: library,

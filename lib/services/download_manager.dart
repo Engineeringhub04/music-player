@@ -5,6 +5,8 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../models/video_info.dart';
+
 enum DlStatus { queued, running, paused, complete, failed, canceled }
 
 /// One download tracked by the app.
@@ -13,6 +15,10 @@ class DownloadEntry {
   final DownloadTask task;
   final String title;
   final bool audio;
+
+  /// The video this download came from (for Local Music registration).
+  final VideoInfo? video;
+
   double progress; // 0..1, -1 unknown
   DlStatus status;
   double speedMbps; // MB/s, -1 unknown
@@ -26,6 +32,7 @@ class DownloadEntry {
     required this.task,
     required this.title,
     required this.audio,
+    this.video,
     this.progress = 0,
     this.status = DlStatus.queued,
     this.speedMbps = -1,
@@ -45,6 +52,11 @@ class DownloadManager extends ChangeNotifier {
   final Map<String, DownloadEntry> _entries = {};
   StreamSubscription<TaskUpdate>? _sub;
   bool _initialized = false;
+
+  /// Called when a download finishes: (entry, absolute file path).
+  /// Used to register the file into Local Music (LibraryService).
+  Future<void> Function(DownloadEntry entry, String filePath)?
+      onDownloadComplete;
 
   List<DownloadEntry> get entries => _entries.values.toList();
   List<DownloadEntry> get active => _entries.values
@@ -90,6 +102,7 @@ class DownloadManager extends ChangeNotifier {
     required String url,
     required String title,
     required bool audio,
+    VideoInfo? video,
     bool requiresWiFi = false,
     int expectedBytes = -1,
   }) async {
@@ -119,6 +132,7 @@ class DownloadManager extends ChangeNotifier {
       task: task,
       title: title,
       audio: audio,
+      video: video,
       expectedBytes: expectedBytes,
     );
     notifyListeners();
@@ -213,6 +227,8 @@ class DownloadManager extends ChangeNotifier {
         case TaskStatus.complete:
           entry.status = DlStatus.complete;
           entry.progress = 1.0;
+          // Register into Local Music (fire-and-forget).
+          _registerComplete(entry, update.task);
         case TaskStatus.canceled:
           entry.status = DlStatus.canceled;
         case TaskStatus.failed:
@@ -226,6 +242,17 @@ class DownloadManager extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  /// Resolve the finished file path and notify [onDownloadComplete].
+  Future<void> _registerComplete(
+      DownloadEntry entry, Task task) async {
+    final cb = onDownloadComplete;
+    if (cb == null || entry.video == null) return;
+    try {
+      final path = await task.filePath();
+      await cb(entry, path);
+    } catch (_) {}
   }
 
   @override

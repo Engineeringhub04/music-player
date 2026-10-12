@@ -123,7 +123,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBlack,
+      backgroundColor: AppTheme.scaffoldBg,
       body: SafeArea(
         child: ListenableBuilder(
           listenable: widget.library,
@@ -191,9 +191,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16),
                           itemCount: favs.length,
-                          separatorBuilder: (_, __) => const Divider(
+                          separatorBuilder: (_, __) => Divider(
                             height: 1,
-                            color: Colors.white10,
+                            color: AppTheme.faint,
                           ),
                           itemBuilder: (c, i) {
                             final v = favs[i];
@@ -230,17 +230,17 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           padding:
               const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
           decoration: BoxDecoration(
-            color: AppTheme.cardDark,
+            color: AppTheme.card,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
             children: [
-              Icon(icon, color: Colors.white, size: 30),
+              Icon(icon, color: AppTheme.primary, size: 30),
               const SizedBox(height: 8),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.fg,
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
                 ),
