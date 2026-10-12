@@ -25,7 +25,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
           bottom: const TabBar(
-            indicatorColor: AppTheme.violet,
+            indicatorColor: AppTheme.primary,
             labelColor: Colors.white,
             unselectedLabelColor: AppTheme.textGrey,
             tabs: [
@@ -92,7 +92,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                   child: const Icon(
                     Icons.play_circle_outline,
-                    color: AppTheme.violet,
+                    color: AppTheme.primary,
                   ),
                 ),
                 title: Text(

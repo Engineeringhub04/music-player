@@ -88,6 +88,7 @@ class _DownloadSheetState extends State<_DownloadSheet> {
             '${widget.video.title} [${format.label.isEmpty ? format.formatId : format.label}]',
         audio: audio,
         requiresWiFi: widget.settings.wifiOnly,
+        expectedBytes: format.fileSize,
       );
       await widget.history.addDownloaded(widget.video);
       if (!mounted) return;
@@ -130,7 +131,7 @@ class _DownloadSheetState extends State<_DownloadSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            const Text('Download', style: AppText.title),
+            Text('Download', style: AppText.title),
             const SizedBox(height: 4),
             Text(
               widget.video.title.isEmpty ? 'Untitled' : widget.video.title,
@@ -168,7 +169,7 @@ class _DownloadSheetState extends State<_DownloadSheet> {
                 _load();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.violet,
+                backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Retry'),
@@ -182,7 +183,7 @@ class _DownloadSheetState extends State<_DownloadSheet> {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 28),
         child: Center(
-          child: CircularProgressIndicator(color: AppTheme.violet),
+          child: CircularProgressIndicator(color: AppTheme.primary),
         ),
       );
     }
@@ -209,7 +210,7 @@ class _DownloadSheetState extends State<_DownloadSheet> {
           contentPadding: EdgeInsets.zero,
           leading: Icon(
             f.hasVideo ? Icons.videocam_outlined : Icons.audiotrack,
-            color: AppTheme.violet,
+            color: AppTheme.primary,
           ),
           title: Text(
             label,
@@ -231,12 +232,12 @@ class _DownloadSheetState extends State<_DownloadSheet> {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AppTheme.violet,
+                    color: AppTheme.primary,
                   ),
                 )
               : const Icon(
                   Icons.download_outlined,
-                  color: AppTheme.violet,
+                  color: AppTheme.primary,
                 ),
           onTap: busy ? null : () => _download(f),
         );

@@ -79,7 +79,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.play_arrow, color: AppTheme.violet),
+              leading: const Icon(Icons.play_arrow, color: AppTheme.primary),
               title: const Text('Play'),
               onTap: () {
                 Navigator.of(c).pop();
@@ -229,11 +229,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _reload,
-        color: AppTheme.violet,
+        color: AppTheme.primary,
         child: _loading
             ? const Center(
                 child:
-                    CircularProgressIndicator(color: AppTheme.violet),
+                    CircularProgressIndicator(color: AppTheme.primary),
               )
             : ListView(
                 padding: const EdgeInsets.all(16),
@@ -295,7 +295,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               children: [
                 const Icon(
                   Icons.storage_outlined,
-                  color: AppTheme.violet,
+                  color: AppTheme.primary,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -308,7 +308,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   formatBytes(_totalBytes),
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.violet,
+                    color: AppTheme.primary,
                   ),
                 ),
               ],
@@ -455,7 +455,7 @@ class _LocalPlayerScreenState extends State<_LocalPlayerScreen> {
                 ),
               )
             : _chewie == null
-                ? const CircularProgressIndicator(color: AppTheme.violet)
+                ? const CircularProgressIndicator(color: AppTheme.primary)
                 : widget.file.isAudio
                     ? Column(
                         mainAxisSize: MainAxisSize.min,

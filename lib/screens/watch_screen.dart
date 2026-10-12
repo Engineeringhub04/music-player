@@ -264,7 +264,7 @@ class _WatchScreenState extends State<WatchScreen> {
                   return ListTile(
                     leading: Icon(
                       f.hasVideo ? Icons.videocam_outlined : Icons.audiotrack,
-                      color: selected ? AppTheme.violet : AppTheme.textGrey,
+                      color: selected ? AppTheme.primary : AppTheme.textGrey,
                     ),
                     title: Text(
                       f.label.isEmpty ? f.formatId : f.label,
@@ -277,7 +277,7 @@ class _WatchScreenState extends State<WatchScreen> {
                         ? Text(formatBytes(f.fileSize))
                         : null,
                     trailing: selected
-                        ? const Icon(Icons.check, color: AppTheme.violet)
+                        ? const Icon(Icons.check, color: AppTheme.primary)
                         : null,
                     onTap: () {
                       Navigator.of(c).pop();
@@ -394,7 +394,7 @@ class _WatchScreenState extends State<WatchScreen> {
                         label: Text(_selected?.label ?? 'Quality'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
-                          side: const BorderSide(color: AppTheme.violet),
+                          side: const BorderSide(color: AppTheme.primary),
                           padding:
                               const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
@@ -445,7 +445,7 @@ class _WatchScreenState extends State<WatchScreen> {
               ElevatedButton(
                 onPressed: _loadFormats,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.violet,
+                  backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('Retry'),
@@ -460,7 +460,7 @@ class _WatchScreenState extends State<WatchScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: AppTheme.violet),
+            CircularProgressIndicator(color: AppTheme.primary),
             SizedBox(height: 12),
             Text(
               'Loading video...',
@@ -478,7 +478,7 @@ class _WatchScreenState extends State<WatchScreen> {
           Container(
             color: Colors.black54,
             child: const Center(
-              child: CircularProgressIndicator(color: AppTheme.violet),
+              child: CircularProgressIndicator(color: AppTheme.primary),
             ),
           ),
       ],

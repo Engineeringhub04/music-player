@@ -9,7 +9,6 @@ import '../services/player_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
 import '../widgets/app_widgets.dart';
-import '../widgets/download_sheet.dart';
 
 /// Home: "Discover Great Music", search bar, Top Music Videos (trending API),
 /// Top Artists, Top Playlists.
@@ -82,16 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
     widget.player.play(v, queue: _trending ?? [v]);
   }
 
-  void _download(VideoInfo v) {
-    showDownloadSheet(
-      context,
-      video: v,
-      settings: widget.settings,
-      downloads: widget.downloads,
-      history: widget.history,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,11 +88,11 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _load,
-          color: AppTheme.violet,
+          color: AppTheme.primary,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
-              const Center(
+              Center(
                 child: Text('Discover Great Music', style: AppText.pageTitle),
               ),
               const SizedBox(height: 14),
@@ -176,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ElevatedButton(
               onPressed: _load,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.violet,
+                backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Retry'),
@@ -207,7 +196,6 @@ class _HomeScreenState extends State<HomeScreen> {
           return VideoHCard(
             video: v,
             onTap: () => _play(v),
-            onDownload: () => _download(v),
           );
         },
       ),
@@ -279,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const Icon(
                     Icons.queue_music,
-                    color: AppTheme.violet,
+                    color: AppTheme.primary,
                     size: 22,
                   ),
                   const SizedBox(width: 8),

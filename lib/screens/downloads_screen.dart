@@ -161,7 +161,7 @@ class _ActiveTile extends StatelessWidget {
                 minHeight: 6,
                 backgroundColor: Colors.white10,
                 valueColor:
-                    const AlwaysStoppedAnimation<Color>(AppTheme.violet),
+                    const AlwaysStoppedAnimation<Color>(AppTheme.primary),
               ),
             ),
             const SizedBox(height: 6),
@@ -181,7 +181,7 @@ class _ActiveTile extends StatelessWidget {
                     tooltip: 'Resume',
                     icon: const Icon(
                       Icons.play_circle_outline,
-                      color: AppTheme.violet,
+                      color: AppTheme.primary,
                     ),
                     onPressed: () => manager.resume(entry.taskId),
                   ),

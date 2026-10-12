@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../services/api_client.dart';
+import '../services/country_service.dart';
 import '../services/library_service.dart';
 import '../services/settings_service.dart';
 import '../services/storage_service.dart';
@@ -50,12 +51,125 @@ class _SettingsScreenState extends State<SettingsScreen> {
     'Audio only',
   ];
 
+  bool _detectingCountry = false;
+
   @override
   void initState() {
     super.initState();
     _urlController = TextEditingController(text: widget.settings.baseUrl);
     _keyController = TextEditingController(text: widget.settings.apiKey);
     _loadCacheSize();
+    // Auto-detect country from IP once, when never set.
+    if (widget.settings.countryCode.isEmpty) {
+      _detectCountry(silent: true);
+    }
+  }
+
+  Future<void> _detectCountry({bool silent = false}) async {
+    setState(() => _detectingCountry = true);
+    final code = await CountryService.detectAndSave(widget.settings);
+    if (!mounted) return;
+    setState(() => _detectingCountry = false);
+    if (!silent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(code == null
+              ? 'Could not detect country. Check your connection.'
+              : 'Country set to ${CountryService.nameFor(code)} '
+                  '${CountryService.flagFor(code)}.'),
+        ),
+      );
+    }
+  }
+
+  void _pickCountry() {
+    final current = widget.settings.countryCode;
+    showModalBottomSheet(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('Country', style: AppText.title),
+                  ),
+                  if (_detectingCountry)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.primary,
+                      ),
+                    )
+                  else
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.of(c).pop();
+                        _detectCountry();
+                      },
+                      icon: const Icon(
+                        Icons.my_location,
+                        color: AppTheme.primary,
+                        size: 18,
+                      ),
+                      label: const Text(
+                        'Auto-detect',
+                        style: TextStyle(
+                            color: AppTheme.primary),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: CountryService.all.length,
+                itemBuilder: (c2, i) {
+                  final e = CountryService.all[i];
+                  final code = e.key;
+                  final name = e.value;
+                  final selected = current == code;
+                  return ListTile(
+                    leading: Text(
+                      CountryService.flagFor(code),
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                    title: Text(
+                      name,
+                      style: TextStyle(
+                        color: AppTheme.isLight
+                            ? Colors.black
+                            : Colors.white,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.normal,
+                      ),
+                    ),
+                    trailing: selected
+                        ? const Icon(Icons.check,
+                            color: AppTheme.primary)
+                        : null,
+                    onTap: () async {
+                      await widget.settings
+                          .setCountry(code, name);
+                      if (c.mounted) Navigator.of(c).pop();
+                      setState(() {});
+                      widget.onChanged();
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadCacheSize() async {
@@ -145,7 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Extractor Server', style: AppText.title),
+              Text('Extractor Server', style: AppText.title),
               const SizedBox(height: 14),
               TextField(
                 controller: _urlController,
@@ -205,7 +319,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               height: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppTheme.violet,
+                                color: AppTheme.primary,
                               ),
                             )
                           : const Icon(Icons.wifi_find_outlined,
@@ -214,7 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side:
-                            const BorderSide(color: AppTheme.violet),
+                            const BorderSide(color: AppTheme.primary),
                         padding: const EdgeInsets.symmetric(
                             vertical: 13),
                         shape: RoundedRectangleBorder(
@@ -253,7 +367,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            const Center(
+            Center(
                 child: Text('Settings', style: AppText.pageTitle)),
             const SizedBox(height: 16),
             SettingsRow(
@@ -292,6 +406,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               onTap: _editServerSheet,
+            ),
+            SettingsRow(
+              icon: Icons.public_outlined,
+              title: 'Country',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (s.countryCode.isNotEmpty)
+                    Text(
+                      CountryService.flagFor(s.countryCode),
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                  if (s.countryCode.isNotEmpty)
+                    const SizedBox(width: 6),
+                  Text(
+                    s.countryName.isEmpty
+                        ? 'Not set'
+                        : s.countryName,
+                    style: AppText.body,
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right,
+                      color: AppTheme.textGrey),
+                ],
+              ),
+              onTap: _pickCountry,
             ),
             SettingsRow(
               icon: Icons.close,
@@ -446,8 +586,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: Text('Media Quality', style: AppText.title),
             ),
             Flexible(
@@ -469,7 +609,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     trailing: selected
                         ? const Icon(Icons.check,
-                            color: AppTheme.violet)
+                            color: AppTheme.primary)
                         : null,
                     onTap: () async {
                       await s.setDefaultQuality(q);
@@ -502,7 +642,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.of(c).pop(),
             child: const Text(
               'Close',
-              style: TextStyle(color: AppTheme.violet),
+              style: TextStyle(color: AppTheme.primary),
             ),
           ),
         ],

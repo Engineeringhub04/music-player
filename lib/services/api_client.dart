@@ -92,10 +92,35 @@ class ApiClient {
     return _parseVideoList(decoded);
   }
 
-  /// POST /trending
-  Future<List<VideoInfo>> trending() async {
-    final decoded = await _post('/trending');
+  /// POST /trending with optional `country` (ISO code, e.g. "NP").
+  Future<List<VideoInfo>> trending({String? country}) async {
+    final decoded = await _post(
+      '/trending',
+      country == null || country.isEmpty ? const {} : {'country': country},
+    );
     return _parseVideoList(decoded);
+  }
+
+  /// POST /search_playlists — YouTube playlists/albums matching [q].
+  /// [kind]: 'playlists' or 'albums'.
+  Future<List<PlaylistInfo>> searchPlaylists(
+    String q, {
+    String kind = 'playlists',
+    int limit = 10,
+  }) async {
+    final decoded = await _post('/search_playlists', {
+      'q': q,
+      'kind': kind,
+      'limit': '$limit',
+    });
+    final raw = decoded is Map && decoded['results'] is List
+        ? decoded['results'] as List
+        : <dynamic>[];
+    return raw
+        .whereType<Map>()
+        .map((m) => PlaylistInfo.fromJson(Map<String, dynamic>.from(m)))
+        .where((p) => p.playlistUrl.isNotEmpty)
+        .toList();
   }
 
   /// `POST /formats` with query param `url`.
@@ -134,6 +159,59 @@ class ApiClient {
     final decoded = await _post('/playlist', {'url': playlistUrl});
     return _parseVideoList(
       decoded is Map ? decoded['entries'] ?? decoded : decoded,
+    );
+  }
+}
+
+/// A YouTube playlist/album from POST /search_playlists.
+class PlaylistInfo {
+  final String id;
+  final String title;
+  final String thumbnailUrl;
+  final String channelName;
+  final String playlistUrl;
+  final int videoCount;
+
+  const PlaylistInfo({
+    required this.id,
+    required this.title,
+    required this.thumbnailUrl,
+    required this.channelName,
+    required this.playlistUrl,
+    required this.videoCount,
+  });
+
+  factory PlaylistInfo.fromJson(Map<String, dynamic> json) {
+    String str(dynamic v) => v == null ? '' : v.toString();
+    int num(dynamic v) {
+      if (v == null) return 0;
+      if (v is int) return v;
+      if (v is double) return v.round();
+      return int.tryParse(v.toString()) ?? 0;
+    }
+
+    final url = str(
+      json['playlistUrl'] ??
+          json['playlist_url'] ??
+          json['url'] ??
+          json['webpageUrl'],
+    );
+    final id = str(json['id'] ?? json['playlistId'] ?? json['playlist_id']);
+    return PlaylistInfo(
+      id: id.isEmpty ? url : id,
+      title: str(json['title']),
+      thumbnailUrl: str(
+        json['thumbnailUrl'] ?? json['thumbnail_url'] ?? json['thumbnail'],
+      ),
+      channelName: str(
+        json['channelName'] ??
+            json['channel_name'] ??
+            json['channel'] ??
+            json['uploader'],
+      ),
+      playlistUrl: url,
+      videoCount: num(
+          json['videoCount'] ?? json['video_count'] ?? json['count']),
     );
   }
 }

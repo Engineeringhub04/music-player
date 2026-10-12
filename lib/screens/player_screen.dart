@@ -93,7 +93,7 @@ class PlayerScreen extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color:
-                    AppTheme.violet.withValues(alpha: 0.35),
+                    AppTheme.primary.withValues(alpha: 0.35),
                 blurRadius: 40,
                 offset: const Offset(0, 12),
               ),
@@ -109,7 +109,7 @@ class PlayerScreen extends StatelessWidget {
                       child: const Center(
                         child: Icon(
                           Icons.music_note,
-                          color: AppTheme.violet,
+                          color: AppTheme.primary,
                           size: 80,
                         ),
                       ),
@@ -121,7 +121,7 @@ class PlayerScreen extends StatelessWidget {
                         color: AppTheme.cardDark,
                         child: const Center(
                           child: CircularProgressIndicator(
-                            color: AppTheme.violet,
+                            color: AppTheme.primary,
                           ),
                         ),
                       ),
@@ -130,7 +130,7 @@ class PlayerScreen extends StatelessWidget {
                         child: const Center(
                           child: Icon(
                             Icons.music_note,
-                            color: AppTheme.violet,
+                            color: AppTheme.primary,
                             size: 80,
                           ),
                         ),
@@ -173,7 +173,7 @@ class PlayerScreen extends StatelessWidget {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppTheme.violet,
+                  color: AppTheme.primary,
                 ),
               ),
             ),
@@ -191,11 +191,11 @@ class PlayerScreen extends StatelessWidget {
         // Seekbar
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
-            activeTrackColor: AppTheme.violet,
+            activeTrackColor: AppTheme.primary,
             inactiveTrackColor: Colors.white24,
-            thumbColor: AppTheme.violet,
+            thumbColor: AppTheme.primary,
             overlayColor:
-                AppTheme.violet.withValues(alpha: 0.2),
+                AppTheme.primary.withValues(alpha: 0.2),
             trackHeight: 4,
           ),
           child: Slider(
@@ -226,7 +226,7 @@ class PlayerScreen extends StatelessWidget {
               icon: Icon(
                 Icons.shuffle,
                 color: player.shuffle
-                    ? AppTheme.violet
+                    ? AppTheme.primary
                     : AppTheme.textGrey,
                 size: 26,
               ),
@@ -277,7 +277,7 @@ class PlayerScreen extends StatelessWidget {
                     ? Icons.repeat_one
                     : Icons.repeat,
                 color: player.repeatOne
-                    ? AppTheme.violet
+                    ? AppTheme.primary
                     : AppTheme.textGrey,
                 size: 26,
               ),
@@ -300,7 +300,7 @@ class PlayerScreen extends StatelessWidget {
                       ? Icons.favorite
                       : Icons.favorite_border,
                   color: library.isFavorite(video)
-                      ? AppTheme.violet
+                      ? AppTheme.primary
                       : Colors.white,
                   size: 26,
                 ),
@@ -345,8 +345,8 @@ class PlayerScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: Text('Up Next', style: AppText.title),
             ),
             Flexible(
@@ -382,7 +382,7 @@ class PlayerScreen extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: active
-                            ? AppTheme.violet
+                            ? AppTheme.primary
                             : Colors.white,
                         fontWeight: active
                             ? FontWeight.w700

@@ -18,6 +18,9 @@ class StoredFile {
     required this.modified,
     required this.isAudio,
   });
+
+  /// Absolute file path.
+  String get path => file.path;
 }
 
 /// Lists / deletes / renames / shares downloaded files in /MusicPlayer.

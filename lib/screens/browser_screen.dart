@@ -252,7 +252,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
           ? null
           : FloatingActionButton.extended(
               onPressed: _onFabTap,
-              backgroundColor: AppTheme.violet,
+              backgroundColor: AppTheme.primary,
               icon: const Icon(Icons.download_outlined, color: Colors.white),
               label: Text(
                 _detectedDirectFile ? 'Download file' : 'Get this video',

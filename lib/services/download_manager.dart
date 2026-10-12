@@ -18,6 +18,9 @@ class DownloadEntry {
   double speedMbps; // MB/s, -1 unknown
   String? error;
 
+  /// Total bytes expected (from the format info); -1 when unknown.
+  final int expectedBytes;
+
   DownloadEntry({
     required this.taskId,
     required this.task,
@@ -27,7 +30,13 @@ class DownloadEntry {
     this.status = DlStatus.queued,
     this.speedMbps = -1,
     this.error,
+    this.expectedBytes = -1,
   });
+
+  /// Bytes downloaded so far (estimated from progress), -1 if unknown.
+  int get downloadedBytes => expectedBytes > 0 && progress >= 0
+      ? (expectedBytes * progress.clamp(0.0, 1.0)).round()
+      : -1;
 }
 
 /// Wraps background_downloader: enqueue / pause / resume / cancel,
@@ -82,6 +91,7 @@ class DownloadManager extends ChangeNotifier {
     required String title,
     required bool audio,
     bool requiresWiFi = false,
+    int expectedBytes = -1,
   }) async {
     // POST_NOTIFICATIONS on first download (Android 13+).
     if (Platform.isAndroid) {
@@ -109,6 +119,7 @@ class DownloadManager extends ChangeNotifier {
       task: task,
       title: title,
       audio: audio,
+      expectedBytes: expectedBytes,
     );
     notifyListeners();
     return task.taskId;
@@ -136,6 +147,36 @@ class DownloadManager extends ChangeNotifier {
 
   void dismiss(String taskId) {
     _entries.remove(taskId);
+    notifyListeners();
+  }
+
+  /// Pause every active download.
+  Future<void> pauseAll() async {
+    for (final e in active) {
+      if (e.status == DlStatus.running || e.status == DlStatus.queued) {
+        await FileDownloader().pause(e.task);
+      }
+    }
+  }
+
+  /// Resume every paused/failed download.
+  Future<void> resumeAll() async {
+    for (final e in active) {
+      if (e.status == DlStatus.paused || e.status == DlStatus.failed) {
+        e.error = null;
+        await FileDownloader().resume(e.task);
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Cancel every active download.
+  Future<void> cancelAll() async {
+    final ids = active.map((e) => e.taskId).toList();
+    for (final id in ids) {
+      await FileDownloader().cancelTaskWithId(id);
+      _entries.remove(id);
+    }
     notifyListeners();
   }
 

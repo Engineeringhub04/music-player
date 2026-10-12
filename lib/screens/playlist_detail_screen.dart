@@ -1,109 +1,198 @@
 import 'package:flutter/material.dart';
 
 import '../models/video_info.dart';
+import '../services/download_manager.dart';
+import '../services/history_service.dart';
 import '../services/library_service.dart';
 import '../services/player_service.dart';
+import '../services/settings_service.dart';
 import '../theme.dart';
 import '../widgets/app_widgets.dart';
+import '../widgets/download_sheet.dart';
+import '../widgets/glass_popup.dart';
+import '../widgets/video_menu.dart';
 
-/// Playlist detail: back, title, download icon, search, song rows with
-/// checkmark + 3-dot menu (screenshot 6).
+/// Playlist detail: back, centered title, header 3-dot,
+/// search, song rows with 3-dot glass menus. No download icon.
 class PlaylistDetailScreen extends StatefulWidget {
   final UserPlaylist playlist;
   final LibraryService library;
   final PlayerService? player;
+  final SettingsService? settings;
+  final DownloadManager? downloads;
+  final HistoryService? history;
 
   const PlaylistDetailScreen({
     super.key,
     required this.playlist,
     required this.library,
     this.player,
+    this.settings,
+    this.downloads,
+    this.history,
   });
 
   @override
-  State<PlaylistDetailScreen> createState() => _PlaylistDetailScreenState();
+  State<PlaylistDetailScreen> createState() =>
+      _PlaylistDetailScreenState();
 }
 
-class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
+class _PlaylistDetailScreenState
+    extends State<PlaylistDetailScreen> {
   String _query = '';
-  final Set<String> _checked = {};
 
-  void _play(VideoInfo v) {
+  VideoMenuDeps? get _deps {
+    if (widget.player == null ||
+        widget.settings == null ||
+        widget.downloads == null ||
+        widget.history == null) {
+      return null;
+    }
+    return VideoMenuDeps(
+      library: widget.library,
+      player: widget.player!,
+      settings: widget.settings!,
+      downloads: widget.downloads!,
+      history: widget.history!,
+    );
+  }
+
+  void _play(VideoInfo v, List<VideoInfo> queue) {
     widget.library.addRecent(v);
-    widget.player?.play(v, queue: widget.playlist.videos);
+    widget.player?.play(v, queue: queue);
   }
 
   void _songMenu(VideoInfo v) {
-    showModalBottomSheet(
-      context: context,
-      builder: (c) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading:
-                  const Icon(Icons.play_arrow, color: AppTheme.violet),
-              title: const Text(
-                'Play',
-                style: TextStyle(color: Colors.white),
-              ),
-              onTap: () {
-                Navigator.of(c).pop();
-                _play(v);
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.favorite_border,
-                color: Colors.white,
-              ),
-              title: const Text(
-                'Add to Favorites',
-                style: TextStyle(color: Colors.white),
-              ),
-              onTap: () async {
-                Navigator.of(c).pop();
-                if (!widget.library.isFavorite(v)) {
-                  await widget.library.toggleFavorite(v);
-                }
-                if (mounted) {
+    final deps = _deps;
+    if (deps == null) return;
+    showGlassPopup(
+      context,
+      items: [
+        GlassMenuItem(
+          label: 'Play',
+          icon: Icons.play_arrow,
+          onTap: () => _play(v, widget.playlist.videos),
+        ),
+        GlassMenuItem(
+          label: deps.library.isFavorite(v)
+              ? 'Remove from Favorites'
+              : 'Add to Favorites',
+          icon: Icons.favorite_border,
+          onTap: () async {
+            await deps.library.toggleFavorite(v);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Updated favorites.')),
+              );
+            }
+          },
+        ),
+        GlassMenuItem(
+          label: 'Add to a Playlist..',
+          icon: Icons.playlist_add,
+          onTap: () {
+            showAddToListSheet(
+              context,
+              library: deps.library,
+              onPick: (p) async {
+                await deps.library.addToPlaylist(p, v);
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Added to favorites.')),
+                    SnackBar(
+                        content: Text('Added to ${p.name}.')),
                   );
                 }
               },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.remove_circle_outline,
-                color: Colors.redAccent,
-              ),
-              title: const Text(
-                'Remove from playlist',
-                style: TextStyle(color: Colors.redAccent),
-              ),
-              onTap: () async {
-                Navigator.of(c).pop();
-                await widget.library
-                    .removeFromPlaylist(widget.playlist, v);
-              },
-            ),
-          ],
+            );
+          },
         ),
-      ),
+        GlassMenuItem(
+          label: 'Download',
+          icon: Icons.download_outlined,
+          onTap: () => quickDownload(context, v, deps: deps),
+        ),
+        GlassMenuItem(
+          label: 'Select Quality',
+          icon: Icons.chevron_right,
+          onTap: () {
+            showDownloadSheet(
+              context,
+              video: v,
+              settings: deps.settings,
+              downloads: deps.downloads,
+              history: deps.history,
+            );
+          },
+        ),
+        GlassMenuItem(
+          label: 'Remove from playlist',
+          icon: Icons.remove_circle_outline,
+          destructive: true,
+          onTap: () async {
+            await widget.library
+                .removeFromPlaylist(widget.playlist, v);
+          },
+        ),
+      ],
+    );
+  }
+
+  void _headerMenu() {
+    final videos = widget.playlist.videos;
+    showGlassPopup(
+      context,
+      items: [
+        GlassMenuItem(
+          label: 'Play All',
+          icon: Icons.play_arrow,
+          onTap: () {
+            if (videos.isNotEmpty) {
+              widget.library.addRecent(videos.first);
+              widget.player?.playQueue(videos);
+            }
+          },
+        ),
+        GlassMenuItem(
+          label: 'Add All to a Playlist..',
+          icon: Icons.playlist_add,
+          onTap: () {
+            if (videos.isEmpty) return;
+            showAddToListSheet(
+              context,
+              library: widget.library,
+              onPick: (p) async {
+                for (final v in videos) {
+                  await widget.library.addToPlaylist(p, v);
+                }
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                            'Added to ${p.name}.')),
+                  );
+                }
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final fg = AppTheme.isLight ? Colors.black : Colors.white;
     final videos = widget.playlist.videos
         .where((v) =>
             v.title.toLowerCase().contains(_query.toLowerCase()) ||
-            v.channelName.toLowerCase().contains(_query.toLowerCase()))
+            v.channelName
+                .toLowerCase()
+                .contains(_query.toLowerCase()))
         .toList();
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBlack,
+      backgroundColor:
+          AppTheme.isLight ? Colors.white : AppTheme.scaffoldBlack,
       body: SafeArea(
         child: ListenableBuilder(
           listenable: widget.library,
@@ -115,11 +204,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                 child: Row(
                   children: [
                     IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new,
-                        color: Colors.white,
-                      ),
+                      onPressed: () =>
+                          Navigator.of(context).pop(),
+                      icon: Icon(Icons.arrow_back_ios_new,
+                          color: fg),
                     ),
                     Expanded(
                       child: Text(
@@ -131,35 +219,8 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                'Download-all coming from the Downloads tab.'),
-                          ),
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.download_outlined,
-                        color: Colors.white,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => _songMenu(widget.playlist.videos
-                              .isNotEmpty
-                          ? widget.playlist.videos.first
-                          : VideoInfo(
-                              id: '',
-                              title: widget.playlist.name,
-                              thumbnailUrl: '',
-                              durationSecs: 0,
-                              channelName: '',
-                              viewCount: 0,
-                              videoUrl: '')),
-                      icon: const Icon(
-                        Icons.more_vert,
-                        color: Colors.white,
-                      ),
+                      onPressed: _headerMenu,
+                      icon: Icon(Icons.more_vert, color: fg),
                     ),
                   ],
                 ),
@@ -168,7 +229,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                 padding:
                     const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: SearchBarField(
-                  hint: 'Search',
+                  hint: 'Search..',
                   onChanged: (v) =>
                       setState(() => _query = v.trim()),
                 ),
@@ -181,29 +242,15 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                           style: AppText.body,
                         ),
                       )
-                    : ListView.separated(
+                    : ListView.builder(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16),
                         itemCount: videos.length,
-                        separatorBuilder: (_, __) => const Divider(
-                          height: 1,
-                          color: Colors.white10,
-                        ),
                         itemBuilder: (c, i) {
                           final v = videos[i];
                           return SongRow(
                             video: v,
-                            checked: _checked.contains(v.id),
-                            onCheckToggle: () {
-                              setState(() {
-                                if (_checked.contains(v.id)) {
-                                  _checked.remove(v.id);
-                                } else {
-                                  _checked.add(v.id);
-                                }
-                              });
-                            },
-                            onTap: () => _play(v),
+                            onTap: () => _play(v, videos),
                             onMenu: () => _songMenu(v),
                           );
                         },

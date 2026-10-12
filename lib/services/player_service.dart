@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
+import 'dart:io';
 
 import '../models/video_info.dart';
 import 'api_client.dart';
@@ -133,17 +134,23 @@ class PlayerService extends ChangeNotifier {
     notifyListeners();
     await _disposeController();
     try {
-      final formats =
-          await settings.apiClient.formats(video.videoUrl);
-      final format = _pickAudioFormat(formats) ??
-          (formats.isNotEmpty ? formats.first : null);
-      if (format == null) {
-        throw const ApiException('No playable formats found.');
+      final VideoPlayerController controller;
+      if (video.isLocal) {
+        // Local file: play directly, no server round-trip.
+        controller = VideoPlayerController.file(File(video.videoUrl));
+      } else {
+        final formats =
+            await settings.apiClient.formats(video.videoUrl);
+        final format = _pickAudioFormat(formats) ??
+            (formats.isNotEmpty ? formats.first : null);
+        if (format == null) {
+          throw const ApiException('No playable formats found.');
+        }
+        final url = format.directUrl ??
+            await settings.apiClient
+                .streamUrl(video.videoUrl, format.formatId);
+        controller = VideoPlayerController.networkUrl(Uri.parse(url));
       }
-      final url = format.directUrl ??
-          await settings.apiClient
-              .streamUrl(video.videoUrl, format.formatId);
-      final controller = VideoPlayerController.networkUrl(Uri.parse(url));
       _attach(controller);
       await controller.initialize();
       _controller = controller;

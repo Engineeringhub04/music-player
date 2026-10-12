@@ -10,10 +10,12 @@ class SettingsService {
   static const String _kDefaultQuality = 'defaultQuality';
   static const String _kWifiOnly = 'wifiOnly';
   static const String _kThemeMode = 'themeMode';
+  static const String _kCountryCode = 'countryCode';
+  static const String _kCountryName = 'countryName';
 
   static const String defaultBaseUrl = String.fromEnvironment(
     'EXTRACTOR_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8001',
+    defaultValue: 'https://musicextractor.kishanraut.com.np',
   );
   static const String defaultApiKey = String.fromEnvironment(
     'EXTRACTOR_API_KEY',
@@ -49,6 +51,14 @@ class SettingsService {
   /// 'dark' or 'light'
   String get themeMode => _prefs.getString(_kThemeMode) ?? 'dark';
   Future<void> setThemeMode(String v) => _prefs.setString(_kThemeMode, v);
+
+  /// ISO country code for country-based trending (e.g. "NP").
+  String get countryCode => _prefs.getString(_kCountryCode) ?? '';
+  String get countryName => _prefs.getString(_kCountryName) ?? '';
+  Future<void> setCountry(String code, String name) async {
+    await _prefs.setString(_kCountryCode, code.toUpperCase());
+    await _prefs.setString(_kCountryName, name);
+  }
 
   /// Fresh client built from the current settings.
   ApiClient get apiClient =>

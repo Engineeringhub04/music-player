@@ -8,6 +8,9 @@ class VideoInfo {
   final int viewCount;
   final String videoUrl;
 
+  /// True when [videoUrl] is a local file path instead of a remote URL.
+  final bool isLocal;
+
   const VideoInfo({
     required this.id,
     required this.title,
@@ -16,6 +19,7 @@ class VideoInfo {
     required this.channelName,
     required this.viewCount,
     required this.videoUrl,
+    this.isLocal = false,
   });
 
   factory VideoInfo.fromJson(Map<String, dynamic> json) {
@@ -43,6 +47,7 @@ class VideoInfo {
       ),
       viewCount: num(json['viewCount'] ?? json['view_count'] ?? json['views']),
       videoUrl: url,
+      isLocal: json['isLocal'] == true,
     );
   }
 
@@ -54,6 +59,7 @@ class VideoInfo {
         'channelName': channelName,
         'viewCount': viewCount,
         'videoUrl': videoUrl,
+        'isLocal': isLocal,
       };
 }
 

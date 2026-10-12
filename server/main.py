@@ -127,21 +127,74 @@ def search(q: str = Query(..., description="Search query"),
 
 
 @app.post("/trending")
-def trending(x_api_key: str | None = Header(default=None, alias="X-API-Key")):
+def trending(country: str | None = Query(default=None, description="ISO country code, e.g. NP"),
+             x_api_key: str | None = Header(default=None, alias="X-API-Key")):
     _check_key(x_api_key)
+    geo = []
+    if country and len(country.strip()) == 2:
+        # Bias YouTube's trending feed toward the requested country.
+        geo = ["--geo-bypass-country", country.strip().upper()]
     # Primary: YouTube trending feed. Fallback: a trending-music search.
     proc = _run_ydl(
-        ["--flat-playlist", "--dump-json", "https://www.youtube.com/feed/trending"],
+        geo + ["--flat-playlist", "--dump-json", "https://www.youtube.com/feed/trending"],
         timeout=120,
     )
     if proc.returncode != 0:
         proc = _run_ydl(
-            ["--flat-playlist", "--dump-json", "ytsearch20:trending music 2026"],
+            geo + ["--flat-playlist", "--dump-json", "ytsearch20:trending music 2026"],
             timeout=120,
         )
     if proc.returncode != 0:
         raise HTTPException(status_code=502, detail="yt-dlp trending failed")
     return {"results": _parse_flat_results(proc.stdout)}
+
+
+def _playlist_entry_to_result(entry: dict) -> dict:
+    pid = entry.get("id", "")
+    return {
+        "id": pid,
+        "title": entry.get("title") or "",
+        "thumbnail": _thumbnail(entry),
+        "channel": entry.get("channel") or entry.get("uploader") or "",
+        "count": entry.get("playlist_count") or 0,
+        "url": f"https://www.youtube.com/playlist?list={pid}" if pid else "",
+    }
+
+
+@app.post("/search_playlists")
+def search_playlists(q: str = Query(..., description="Search query"),
+                     kind: str = Query(default="playlists", description="playlists or albums"),
+                     limit: int = Query(default=10, ge=1, le=25),
+                     x_api_key: str | None = Header(default=None, alias="X-API-Key")):
+    _check_key(x_api_key)
+    # YouTube search "type" filter via the sp parameter
+    # (EgIQAw== = playlists, EgIQAQ== = albums), URL-encoded once.
+    sp = "EgIQAQ%3D%3D" if kind == "albums" else "EgIQAw%3D%3D"
+    from urllib.parse import quote_plus
+    url = f"https://www.youtube.com/results?search_query={quote_plus(q)}&sp={sp}"
+    proc = _run_ydl(["--flat-playlist", "--dump-json", url], timeout=120)
+    if proc.returncode != 0:
+        raise HTTPException(status_code=502, detail="yt-dlp playlist search failed")
+    results = []
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        pid = (entry.get("id") or "").strip()
+        if not pid:
+            continue
+        # Flat search entries all arrive as YoutubeTab: channels have UC ids,
+        # playlists/mixes/albums have PL/RD/OL ids. Skip channels.
+        if pid.startswith("UC"):
+            continue
+        results.append(_playlist_entry_to_result(entry))
+        if len(results) >= limit:
+            break
+    return {"results": results}
 
 
 @app.post("/playlist")

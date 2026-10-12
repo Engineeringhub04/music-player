@@ -12,6 +12,7 @@ import 'screens/player_screen.dart';
 import 'screens/playlists_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/trending_screen.dart';
 import 'screens/watch_screen.dart';
 import 'services/download_manager.dart';
 import 'services/history_service.dart';
@@ -24,31 +25,56 @@ import 'theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final settings = SettingsService();
-  await settings.init();
+  // Global error handlers: never let an init failure kill the app.
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
 
-  final downloads = DownloadManager();
-  await downloads.init();
+  await runZonedGuarded<Future<void>>(() async {
+    final settings = SettingsService();
+    try {
+      await settings.init();
+    } catch (e) {
+      debugPrint('SettingsService init failed: $e');
+    }
 
-  final storage = StorageService();
-  final history = HistoryService();
-  await history.init();
+    final downloads = DownloadManager();
+    try {
+      await downloads.init();
+    } catch (e) {
+      debugPrint('DownloadManager init failed: $e');
+    }
 
-  final library = LibraryService();
-  await library.init();
+    final storage = StorageService();
+    final history = HistoryService();
+    try {
+      await history.init();
+    } catch (e) {
+      debugPrint('HistoryService init failed: $e');
+    }
 
-  final player = PlayerService(settings: settings);
+    final library = LibraryService();
+    try {
+      await library.init();
+    } catch (e) {
+      debugPrint('LibraryService init failed: $e');
+    }
 
-  runApp(
-    MusicPlayerApp(
-      settings: settings,
-      downloads: downloads,
-      storage: storage,
-      history: history,
-      library: library,
-      player: player,
-    ),
-  );
+    final player = PlayerService(settings: settings);
+
+    runApp(
+      MusicPlayerApp(
+        settings: settings,
+        downloads: downloads,
+        storage: storage,
+        history: history,
+        library: library,
+        player: player,
+      ),
+    );
+  }, (error, stack) {
+    debugPrint('Uncaught zone error: $error');
+  });
 }
 
 class MusicPlayerApp extends StatefulWidget {
@@ -76,10 +102,18 @@ class MusicPlayerApp extends StatefulWidget {
 class _MusicPlayerAppState extends State<MusicPlayerApp> {
   @override
   Widget build(BuildContext context) {
+    // ThemeMode comes from Settings; AppTheme.isLight drives the
+    // brightness-aware AppText styles used across every screen.
+    final mode = widget.settings.themeMode == 'light'
+        ? ThemeMode.light
+        : ThemeMode.dark;
+    AppTheme.isLight = mode == ThemeMode.light;
     return MaterialApp(
       title: 'Music Player',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: mode,
       home: MainShell(
         settings: widget.settings,
         downloads: widget.downloads,
@@ -118,19 +152,27 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell>
+    with SingleTickerProviderStateMixin {
   int _index = 0;
   StreamSubscription<List<SharedMediaFile>>? _shareSub;
+  late final AnimationController _spin;
 
   @override
   void initState() {
     super.initState();
+    // Rotating center-player artwork while music plays.
+    _spin = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    );
     _initShareReceiver();
   }
 
   @override
   void dispose() {
     _shareSub?.cancel();
+    _spin.dispose();
     super.dispose();
   }
 
@@ -189,9 +231,51 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  void _goSearch() => setState(() => _index = _searchTabIndex());
+  void _goSearch() {
+    // iOS-style open: scale + fade from the search bar.
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration:
+            const Duration(milliseconds: 220),
+        pageBuilder: (c, _, __) => SearchScreen(
+          settings: widget.settings,
+          downloads: widget.downloads,
+          history: widget.history,
+          library: widget.library,
+          player: widget.player,
+        ),
+        transitionsBuilder: (c, anim, _, child) {
+          final curved = CurvedAnimation(
+            parent: anim,
+            curve: Curves.easeOutCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.96, end: 1.0)
+                  .animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+  }
 
-  int _searchTabIndex() => 4; // hidden search tab index
+  void _goTrending() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TrendingScreen(
+          settings: widget.settings,
+          downloads: widget.downloads,
+          history: widget.history,
+          library: widget.library,
+          player: widget.player,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -204,9 +288,16 @@ class _MainShellState extends State<MainShell> {
         player: widget.player,
         onVideoTap: (v) => widget.player.play(v),
         onSearchTap: _goSearch,
-        onViewAllTrending: _goSearch,
+        onViewAllTrending: _goTrending,
       ),
-      PlaylistsScreen(library: widget.library),
+      PlaylistsScreen(
+        library: widget.library,
+        storage: widget.storage,
+        player: widget.player,
+        settings: widget.settings,
+        downloads: widget.downloads,
+        history: widget.history,
+      ),
       FavoritesScreen(
         library: widget.library,
         player: widget.player,
@@ -220,20 +311,10 @@ class _MainShellState extends State<MainShell> {
         library: widget.library,
         onChanged: widget.onSettingsChanged,
       ),
-      SearchScreen(
-        settings: widget.settings,
-        downloads: widget.downloads,
-        history: widget.history,
-        library: widget.library,
-        player: widget.player,
-      ),
     ];
-    // Visible tab indices: 0=Home, 1=Playlists, 2=Favorites, 3=Settings.
-    // Index 4 = Search (hidden, opened via search bars).
-    final visibleIndex = _index >= 4 ? 0 : _index;
     return Scaffold(
       body: IndexedStack(index: _index, children: tabs),
-      bottomNavigationBar: _buildNav(visibleIndex),
+      bottomNavigationBar: _buildNav(_index),
     );
   }
 
@@ -297,7 +378,7 @@ class _MainShellState extends State<MainShell> {
     required int visibleIndex,
   }) {
     final active = visibleIndex == index;
-    final color = active ? AppTheme.violet : AppTheme.textGrey;
+    final color = active ? AppTheme.primary : AppTheme.textGrey;
     return InkWell(
       onTap: () => setState(() => _index = index),
       borderRadius: BorderRadius.circular(12),
@@ -324,7 +405,7 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  /// Center circular button showing current track artwork.
+  /// Center circular button: current video thumbnail, rotating while playing.
   Widget _centerPlayerButton() {
     return GestureDetector(
       onTap: _openPlayer,
@@ -332,37 +413,62 @@ class _MainShellState extends State<MainShell> {
         listenable: widget.player,
         builder: (context, _) {
           final thumb = widget.player.current?.thumbnailUrl ?? '';
-          return Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: thumb.isEmpty
-                  ? AppTheme.primaryGradient
-                  : null,
-              color: thumb.isEmpty ? null : AppTheme.cardDark,
-              border: Border.all(
-                color: AppTheme.violet.withValues(alpha: 0.5),
-                width: 2,
-              ),
-            ),
-            child: ClipOval(
-              child: thumb.isEmpty
-                  ? const Icon(
+          final playing = widget.player.isPlaying &&
+              widget.player.current != null;
+          if (playing && !_spin.isAnimating) {
+            _spin.repeat();
+          } else if (!playing && _spin.isAnimating) {
+            _spin.stop();
+          }
+          final art = ClipOval(
+            child: thumb.isEmpty
+                ? Container(
+                    decoration: const BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                    ),
+                    child: const Icon(
                       Icons.play_arrow,
                       color: Colors.white,
                       size: 30,
-                    )
-                  : CachedNetworkImage(
-                      imageUrl: thumb,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => const Icon(
+                    ),
+                  )
+                : CachedNetworkImage(
+                    imageUrl: thumb,
+                    fit: BoxFit.cover,
+                    width: 58,
+                    height: 58,
+                    errorWidget: (_, __, ___) => Container(
+                      decoration: const BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                      ),
+                      child: const Icon(
                         Icons.play_arrow,
                         color: Colors.white,
                         size: 30,
                       ),
                     ),
+                  ),
+          );
+          return Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.cardDark,
+              border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.6),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha: 0.25),
+                  blurRadius: 12,
+                ),
+              ],
             ),
+            child: playing
+                ? RotationTransition(turns: _spin, child: art)
+                : art,
           );
         },
       ),

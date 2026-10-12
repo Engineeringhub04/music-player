@@ -190,7 +190,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
           ),
           if (_loading)
             const LinearProgressIndicator(
-              color: AppTheme.violet,
+              color: AppTheme.primary,
               backgroundColor: Colors.transparent,
             ),
           if (_batchRunning)
@@ -208,7 +208,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                   const SizedBox(height: 6),
                   LinearProgressIndicator(
                     value: _batchProgress,
-                    color: AppTheme.violet,
+                    color: AppTheme.primary,
                     backgroundColor: Colors.white10,
                   ),
                 ],
@@ -300,7 +300,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
               _checked.remove(i);
             }
           }),
-          activeColor: AppTheme.violet,
+          activeColor: AppTheme.primary,
           secondary: SizedBox(
             width: 120,
             child: VideoRow(

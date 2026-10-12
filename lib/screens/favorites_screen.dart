@@ -11,6 +11,8 @@ import '../services/settings_service.dart';
 import '../theme.dart';
 import '../widgets/app_widgets.dart';
 import '../widgets/download_sheet.dart';
+import '../widgets/glass_popup.dart';
+import '../widgets/video_menu.dart';
 
 /// Favorites: title, search, Shuffle + Play buttons (no Radios),
 /// favorites list.
@@ -46,61 +48,75 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   void _songMenu(VideoInfo v) {
-    showModalBottomSheet(
-      context: context,
-      builder: (c) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading:
-                  const Icon(Icons.play_arrow, color: AppTheme.violet),
-              title: const Text(
-                'Play',
-                style: TextStyle(color: Colors.white),
-              ),
-              onTap: () {
-                Navigator.of(c).pop();
-                widget.player.play(v, queue: widget.library.favorites);
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.download_outlined,
-                color: Colors.white,
-              ),
-              title: const Text(
-                'Download',
-                style: TextStyle(color: Colors.white),
-              ),
-              onTap: () {
-                Navigator.of(c).pop();
-                showDownloadSheet(
-                  context,
-                  video: v,
-                  settings: widget.settings,
-                  downloads: widget.downloads,
-                  history: widget.history,
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.heart_broken_outlined,
-                color: Colors.redAccent,
-              ),
-              title: const Text(
-                'Remove from favorites',
-                style: TextStyle(color: Colors.redAccent),
-              ),
-              onTap: () async {
-                Navigator.of(c).pop();
-                await widget.library.toggleFavorite(v);
-              },
-            ),
-          ],
+    final deps = VideoMenuDeps(
+      library: widget.library,
+      player: widget.player,
+      settings: widget.settings,
+      downloads: widget.downloads,
+      history: widget.history,
+    );
+    showGlassPopup(
+      context,
+      items: [
+        GlassMenuItem(
+          label: 'Play',
+          icon: Icons.play_arrow,
+          onTap: () => widget.player.play(
+            v,
+            queue: widget.library.favorites,
+          ),
         ),
-      ),
+        GlassMenuItem(
+          label: 'Add to a Playlist..',
+          icon: Icons.playlist_add,
+          onTap: () {
+            showAddToListSheet(
+              context,
+              library: widget.library,
+              onPick: (p) async {
+                await widget.library.addToPlaylist(p, v);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('Added to ${p.name}.')),
+                  );
+                }
+              },
+            );
+          },
+        ),
+        GlassMenuItem(
+          label: 'Download',
+          icon: Icons.download_outlined,
+          onTap: () => quickDownload(context, v, deps: deps),
+        ),
+        GlassMenuItem(
+          label: 'Select Quality',
+          icon: Icons.chevron_right,
+          onTap: () {
+            showDownloadSheet(
+              context,
+              video: v,
+              settings: widget.settings,
+              downloads: widget.downloads,
+              history: widget.history,
+            );
+          },
+        ),
+        GlassMenuItem(
+          label: 'Play Related Mix',
+          icon: Icons.radio_outlined,
+          onTap: () => playRelatedMix(context, v, deps: deps),
+        ),
+        GlassMenuItem(
+          label: 'Remove from favorites',
+          icon: Icons.heart_broken_outlined,
+          destructive: true,
+          onTap: () async {
+            await widget.library.toggleFavorite(v);
+          },
+        ),
+      ],
     );
   }
 
@@ -121,8 +137,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 .toList();
             return Column(
               children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 12),
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
                   child: Text('Favorites', style: AppText.pageTitle),
                 ),
                 Padding(

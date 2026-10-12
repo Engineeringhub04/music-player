@@ -1,24 +1,30 @@
 import 'package:flutter/material.dart';
 
-/// App-wide theme: dark AMOLED-first, violet primary.
-/// Palette cloned from the reference music app, recolored to our violet.
+/// App-wide theme: dark-first, iOS pink primary (#FF2D55).
+/// Palette cloned from the reference music app (pink accent, near-black bg).
 class AppTheme {
-  static const Color violet = Color(0xFF8B5CF6);
-  static const Color violetDim = Color(0xFF6D28D9);
-  static const Color pink = Color(0xFFEC4899);
+  /// iOS system pink — the app's primary accent.
+  static const Color primary = Color(0xFFFF2D55);
+  static const Color primaryDim = Color(0xFFD61F44);
 
-  /// Page background.
+  /// Page background (dark).
   static const Color scaffoldBlack = Color(0xFF0A0A0A);
 
-  /// Card / surface color (rows, buttons, search bars).
-  static const Color cardDark = Color(0xFF1E1B2E);
-  static const Color cardLight = Color(0xFFF5F5F7);
+  /// Dark surface / sheet color.
+  static const Color surfaceDark = Color(0xFF1C1C1E);
 
-  /// Muted grey text.
-  static const Color textGrey = Color(0xFFB0B0B0);
+  /// Card / row / search-bar color (dark).
+  static const Color cardDark = Color(0xFF2C2C2E);
+  static const Color cardLight = Color(0xFFF2F2F7);
+
+  /// Muted grey text (readable on both themes).
+  static const Color textGrey = Color(0xFF8E8E93);
+
+  /// Set by the app root before building; drives [AppText].
+  static bool isLight = false;
 
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [violet, violetDim],
+    colors: [primary, primaryDim],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -28,9 +34,9 @@ class AppTheme {
     return base.copyWith(
       scaffoldBackgroundColor: scaffoldBlack,
       colorScheme: const ColorScheme.dark(
-        primary: violet,
-        secondary: violet,
-        surface: cardDark,
+        primary: primary,
+        secondary: primary,
+        surface: surfaceDark,
         onSurface: Colors.white,
       ),
       cardColor: cardDark,
@@ -60,9 +66,9 @@ class AppTheme {
         contentTextStyle: TextStyle(color: Colors.white),
         behavior: SnackBarBehavior.floating,
       ),
-      dialogTheme: const DialogThemeData(backgroundColor: cardDark),
+      dialogTheme: const DialogThemeData(backgroundColor: surfaceDark),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: cardDark,
+        backgroundColor: surfaceDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -71,62 +77,121 @@ class AppTheme {
         textColor: Colors.white,
         iconColor: Colors.white,
       ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: primary,
+      ),
     );
   }
 
-  static ThemeData light() => dark(); // App is dark-only by design.
+  static ThemeData light() {
+    final base = ThemeData.light(useMaterial3: true);
+    return base.copyWith(
+      scaffoldBackgroundColor: Colors.white,
+      colorScheme: const ColorScheme.light(
+        primary: primary,
+        secondary: primary,
+        surface: cardLight,
+        onSurface: Colors.black,
+      ),
+      cardColor: Colors.white,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w700,
+          fontSize: 20,
+        ),
+      ),
+      iconTheme: const IconThemeData(color: Colors.black),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: cardLight,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        hintStyle: const TextStyle(color: textGrey),
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: Color(0xFF1C1C1E),
+        contentTextStyle: TextStyle(color: Colors.white),
+        behavior: SnackBarBehavior.floating,
+      ),
+      dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        textColor: Colors.black,
+        iconColor: Colors.black,
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: primary,
+      ),
+    );
+  }
 }
 
 /// Explicit text styles — never rely on theme defaults for text color.
+/// These adapt to the active brightness via [AppTheme.isLight], which is why
+/// they are getters (not consts): do NOT use them inside `const` widgets.
 class AppText {
-  static const TextStyle title = TextStyle(
-    color: Colors.white,
-    fontWeight: FontWeight.w700,
-    fontSize: 17,
-    height: 1.3,
-  );
-  static const TextStyle titleLarge = TextStyle(
-    color: Colors.white,
-    fontWeight: FontWeight.w800,
-    fontSize: 22,
-  );
-  static const TextStyle pageTitle = TextStyle(
-    color: Colors.white,
-    fontWeight: FontWeight.w700,
-    fontSize: 20,
-  );
+  static Color get _title => AppTheme.isLight ? Colors.black : Colors.white;
+
+  static TextStyle get title => TextStyle(
+        color: _title,
+        fontWeight: FontWeight.w700,
+        fontSize: 17,
+        height: 1.3,
+      );
+  static TextStyle get titleLarge => TextStyle(
+        color: _title,
+        fontWeight: FontWeight.w800,
+        fontSize: 22,
+      );
+  static TextStyle get pageTitle => TextStyle(
+        color: _title,
+        fontWeight: FontWeight.w700,
+        fontSize: 20,
+      );
   static const TextStyle artist = TextStyle(
-    color: AppTheme.violet,
+    color: AppTheme.primary,
     fontWeight: FontWeight.w600,
     fontSize: 14,
   );
   static const TextStyle body = TextStyle(
-    color: Color(0xFFB0B0B0),
+    color: Color(0xFF8E8E93),
     fontSize: 14,
   );
-  static const TextStyle bodyWhite = TextStyle(
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-  );
+  static TextStyle get bodyWhite => TextStyle(
+        color: _title,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      );
   static const TextStyle hint = TextStyle(
-    color: Color(0xFFB0B0B0),
+    color: Color(0xFF8E8E93),
     fontSize: 15,
   );
-  static const TextStyle sectionTitle = TextStyle(
-    color: Colors.white,
-    fontWeight: FontWeight.w800,
-    fontSize: 21,
-  );
+  static TextStyle get sectionTitle => TextStyle(
+        color: _title,
+        fontWeight: FontWeight.w800,
+        fontSize: 21,
+      );
   static const TextStyle viewLink = TextStyle(
-    color: AppTheme.violet,
+    color: AppTheme.primary,
     fontWeight: FontWeight.w600,
     fontSize: 15,
   );
   static const TextStyle navLabel = TextStyle(fontSize: 12);
 }
 
-/// Big call-to-action button with the violet gradient.
+/// Big call-to-action button with the pink gradient.
 class GradientButton extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -151,7 +216,7 @@ class GradientButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.violet.withValues(alpha: 0.35),
+              color: AppTheme.primary.withValues(alpha: 0.35),
               blurRadius: 18,
               offset: const Offset(0, 6),
             ),
@@ -176,9 +241,11 @@ class GradientButton extends StatelessWidget {
                   Flexible(
                     child: Text(
                       label,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ).copyWith(
                         fontSize: compact ? 14 : 16,
                       ),
                       overflow: TextOverflow.ellipsis,
