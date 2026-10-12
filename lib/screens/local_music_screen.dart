@@ -12,20 +12,28 @@ import '../services/storage_service.dart';
 import '../theme.dart';
 import '../widgets/app_widgets.dart';
 import '../widgets/glass_popup.dart';
+import '../widgets/video_menu.dart';
 
 /// One local track: absolute file path + metadata.
 class _LocalTrack {
   final String path;
+
+  /// Original video id (from the registered library entry); empty for
+  /// unregistered files found on disk.
+  final String videoId;
   final String title;
   final String artist;
   final String thumbnailUrl;
+  final bool isAudio;
   final DateTime modified;
 
   _LocalTrack({
     required this.path,
+    this.videoId = '',
     required this.title,
     required this.artist,
     required this.thumbnailUrl,
+    this.isAudio = false,
     required this.modified,
   });
 
@@ -38,6 +46,7 @@ class _LocalTrack {
         viewCount: 0,
         videoUrl: path,
         isLocal: true,
+        isAudio: isAudio,
       );
 }
 
@@ -105,9 +114,11 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
         seen.add(v.videoUrl);
         tracks.add(_LocalTrack(
           path: v.videoUrl,
+          videoId: v.id,
           title: v.title.isEmpty ? _baseName(v.videoUrl) : v.title,
           artist: v.channelName.isEmpty ? 'Unknown artist' : v.channelName,
           thumbnailUrl: v.thumbnailUrl,
+          isAudio: v.isAudio,
           modified: stat.modified,
         ));
       }
@@ -121,6 +132,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
           title: title,
           artist: artist,
           thumbnailUrl: thumb,
+          isAudio: sf.path.toLowerCase().endsWith('.mp3'),
           modified: sf.modified,
         ));
       }
@@ -185,7 +197,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
   }
 
   void _headerMenu() {
-    showGlassPopup(
+    showIosMenu(
       context,
       items: [
         GlassMenuItem(
@@ -231,7 +243,27 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
 
   void _trackMenu(_LocalTrack t) {
     final v = t.toVideoInfo();
-    showGlassPopup(
+    // Video identity for "Save to Audio": the original video id (from the
+    // registered library entry), so formats can be fetched and the
+    // already-saved check works.
+    final menuVideo = VideoInfo(
+      id: t.videoId,
+      title: t.title,
+      thumbnailUrl: t.thumbnailUrl,
+      durationSecs: 0,
+      channelName: t.artist,
+      viewCount: 0,
+      videoUrl: '',
+      isLocal: true,
+    );
+    final deps = VideoMenuDeps(
+      library: widget.library,
+      player: widget.player,
+      settings: widget.settings,
+      downloads: widget.downloads,
+      history: widget.history,
+    );
+    showIosMenu(
       context,
       items: [
         GlassMenuItem(
@@ -272,6 +304,14 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
             );
           },
         ),
+        if (!t.isAudio)
+          GlassMenuItem(
+            label: isAudioSaved(widget.library, t.videoId)
+                ? 'Audio Saved ✓'
+                : 'Save to Audio (MP3)',
+            icon: Icons.music_note_outlined,
+            onTap: () => saveToAudio(context, menuVideo, deps: deps),
+          ),
         GlassMenuItem(
           label: 'Delete',
           icon: Icons.delete_outline,
@@ -476,7 +516,7 @@ class _ProgressSheet extends StatelessWidget {
   const _ProgressSheet({required this.downloads});
 
   void _menu(BuildContext context) {
-    showGlassPopup(
+    showIosMenu(
       context,
       items: [
         GlassMenuItem(

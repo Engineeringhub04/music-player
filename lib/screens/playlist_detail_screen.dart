@@ -65,7 +65,7 @@ class _PlaylistDetailScreenState
   void _songMenu(VideoInfo v) {
     final deps = _deps;
     if (deps == null) return;
-    showGlassPopup(
+    showIosMenu(
       context,
       items: [
         GlassMenuItem(
@@ -140,7 +140,7 @@ class _PlaylistDetailScreenState
 
   void _headerMenu() {
     final videos = widget.playlist.videos;
-    showGlassPopup(
+    showIosMenu(
       context,
       items: [
         GlassMenuItem(

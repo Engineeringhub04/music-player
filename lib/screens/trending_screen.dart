@@ -121,7 +121,7 @@ class _TrendingScreenState extends State<TrendingScreen> {
 
   void _headerMenu() {
     final videos = _all ?? [];
-    showGlassPopup(
+    showIosMenu(
       context,
       items: [
         GlassMenuItem(

@@ -11,6 +11,10 @@ class VideoInfo {
   /// True when [videoUrl] is a local file path instead of a remote URL.
   final bool isLocal;
 
+  /// True for audio-only local files (e.g. saved MP3s) — always play as
+  /// music (thumbnail + audio engine), never as video.
+  final bool isAudio;
+
   const VideoInfo({
     required this.id,
     required this.title,
@@ -20,6 +24,7 @@ class VideoInfo {
     required this.viewCount,
     required this.videoUrl,
     this.isLocal = false,
+    this.isAudio = false,
   });
 
   factory VideoInfo.fromJson(Map<String, dynamic> json) {
@@ -48,6 +53,7 @@ class VideoInfo {
       viewCount: num(json['viewCount'] ?? json['view_count'] ?? json['views']),
       videoUrl: url,
       isLocal: json['isLocal'] == true,
+      isAudio: json['isAudio'] == true,
     );
   }
 
@@ -60,6 +66,7 @@ class VideoInfo {
         'viewCount': viewCount,
         'videoUrl': videoUrl,
         'isLocal': isLocal,
+        'isAudio': isAudio,
       };
 }
 

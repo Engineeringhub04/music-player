@@ -113,7 +113,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
   }
 
   void _playlistMenu(UserPlaylist p) {
-    showGlassPopup(
+    showIosMenu(
       context,
       items: [
         GlassMenuItem(

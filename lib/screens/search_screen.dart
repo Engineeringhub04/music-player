@@ -128,7 +128,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _playlistMenu(PlaylistInfo p) {
-    showGlassPopup(
+    showIosMenu(
       context,
       items: [
         GlassMenuItem(

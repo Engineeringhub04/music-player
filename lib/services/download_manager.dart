@@ -98,6 +98,8 @@ class DownloadManager extends ChangeNotifier {
   }
 
   /// Enqueue a download. Returns the task id.
+  /// [fileExt] overrides the default extension ('m4a' for audio, 'mp4' for
+  /// video) — e.g. 'mp3' for "Save to Audio".
   Future<String> enqueueDownload({
     required String url,
     required String title,
@@ -105,12 +107,13 @@ class DownloadManager extends ChangeNotifier {
     VideoInfo? video,
     bool requiresWiFi = false,
     int expectedBytes = -1,
+    String? fileExt,
   }) async {
     // POST_NOTIFICATIONS on first download (Android 13+).
     if (Platform.isAndroid) {
       await Permission.notification.request();
     }
-    final ext = audio ? 'm4a' : 'mp4';
+    final ext = fileExt ?? (audio ? 'm4a' : 'mp4');
     final filename = '${sanitizeFileName(title)}.$ext';
     final task = DownloadTask(
       url: url,

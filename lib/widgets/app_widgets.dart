@@ -326,13 +326,42 @@ class SongRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    video.channelName.isEmpty
-                        ? 'Unknown artist'
-                        : video.channelName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.artist,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          video.channelName.isEmpty
+                              ? 'Unknown artist'
+                              : video.channelName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.artist,
+                        ),
+                      ),
+                      if (video.isAudio)
+                        Container(
+                          margin:
+                              const EdgeInsets.only(left: 6),
+                          padding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius:
+                                BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'MP3',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),

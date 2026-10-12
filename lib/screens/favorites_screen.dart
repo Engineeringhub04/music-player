@@ -55,7 +55,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       downloads: widget.downloads,
       history: widget.history,
     );
-    showGlassPopup(
+    showIosMenu(
       context,
       items: [
         GlassMenuItem(

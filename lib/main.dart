@@ -97,6 +97,8 @@ Future<void> main() async {
           viewCount: v.viewCount,
           videoUrl: filePath,
           isLocal: true,
+          // MP3 saves (and other audio-only files) play as music.
+          isAudio: filePath.toLowerCase().endsWith('.mp3'),
         ),
       );
     };
