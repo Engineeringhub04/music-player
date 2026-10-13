@@ -53,6 +53,7 @@ class _DownloadSheetState extends State<_DownloadSheet> {
   List<MediaFormat>? _formats;
   String? _error;
   String? _busyFormatId;
+  String? _busyStep; // e.g. "Getting stream URL…" — shows which step is slow.
 
   @override
   void initState() {
@@ -76,11 +77,16 @@ class _DownloadSheetState extends State<_DownloadSheet> {
   }
 
   Future<void> _download(MediaFormat format) async {
-    setState(() => _busyFormatId = format.formatId);
+    setState(() {
+      _busyFormatId = format.formatId;
+      _busyStep = 'Getting stream URL…';
+    });
     try {
       final url = format.directUrl ??
           await widget.settings.apiClient
               .streamUrl(widget.video.videoUrl, format.formatId);
+      if (!mounted) return;
+      setState(() => _busyStep = 'Starting download…');
       final audio = !format.hasVideo;
       await widget.downloads.enqueueDownload(
         url: url,
@@ -99,13 +105,19 @@ class _DownloadSheetState extends State<_DownloadSheet> {
       );
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(() => _busyFormatId = null);
+      setState(() {
+        _busyFormatId = null;
+        _busyStep = null;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Download failed: ${e.message}')),
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _busyFormatId = null);
+      setState(() {
+        _busyFormatId = null;
+        _busyStep = null;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Download failed: $e')),
       );
@@ -221,9 +233,11 @@ class _DownloadSheetState extends State<_DownloadSheet> {
             ),
           ),
           subtitle: Text(
-            '${f.ext.toUpperCase()}${f.fileSize > 0 ? ' • ${formatBytes(f.fileSize)}' : ''}',
-            style: const TextStyle(
-              color: AppTheme.textGrey,
+            busy && _busyStep != null
+                ? _busyStep!
+                : '${f.ext.toUpperCase()}${f.fileSize > 0 ? ' • ${formatBytes(f.fileSize)}' : ''}',
+            style: TextStyle(
+              color: busy ? AppTheme.primary : AppTheme.textGrey,
               fontSize: 12,
             ),
           ),

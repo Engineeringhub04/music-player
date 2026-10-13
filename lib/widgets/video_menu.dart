@@ -36,9 +36,11 @@ void showVideoMenu(
   VideoInfo video, {
   required VideoMenuDeps deps,
   VoidCallback? onFavoriteChanged,
+  BuildContext? anchorContext,
 }) {
   showIosMenu(
     context,
+    anchorContext: anchorContext,
     items: [
       GlassMenuItem(
         label: deps.library.isFavorite(video)

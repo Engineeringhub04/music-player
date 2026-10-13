@@ -110,7 +110,11 @@ class MediaFormat {
     return MediaFormat(
       formatId: str(json['formatId'] ?? json['format_id'] ?? json['id']),
       label: str(
-        json['label'] ?? json['quality'] ?? json['format'] ?? json['abr'],
+        json['label'] ??
+            json['quality'] ??
+            json['format'] ??
+            json['note'] ??
+            json['abr'],
       ),
       ext: str(json['ext'] ?? 'mp4'),
       fileSize: num(json['fileSize'] ?? json['filesize'] ?? json['size']),

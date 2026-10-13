@@ -196,9 +196,10 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
     widget.player.play(t.toVideoInfo(), queue: videos);
   }
 
-  void _headerMenu() {
+  void _headerMenu(BuildContext btnCtx) {
     showIosMenu(
       context,
+      anchorContext: btnCtx,
       items: [
         GlassMenuItem(
           label: _editMode ? 'Done' : 'Edit',
@@ -241,7 +242,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
     );
   }
 
-  void _trackMenu(_LocalTrack t) {
+  void _trackMenu(BuildContext btnCtx, _LocalTrack t) {
     final v = t.toVideoInfo();
     // Video identity for "Save to Audio": the original video id (from the
     // registered library entry), so formats can be fetched and the
@@ -265,6 +266,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
     );
     showIosMenu(
       context,
+      anchorContext: btnCtx,
       items: [
         GlassMenuItem(
           label: 'Play',
@@ -399,9 +401,11 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
                     onPressed: _openProgress,
                     icon: Icon(Icons.download_outlined, color: fg),
                   ),
-                  IconButton(
-                    onPressed: _headerMenu,
-                    icon: Icon(Icons.more_vert, color: fg),
+                  Builder(
+                    builder: (btnCtx) => IconButton(
+                      onPressed: () => _headerMenu(btnCtx),
+                      icon: Icon(Icons.more_vert, color: fg),
+                    ),
                   ),
                 ],
               ),
@@ -479,7 +483,7 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
                               return SongRow(
                                 video: t.toVideoInfo(),
                                 onTap: () => _play(t),
-                                onMenu: () => _trackMenu(t),
+                                onMenu: (btnCtx) => _trackMenu(btnCtx, t),
                                 showCheck: _editMode,
                                 checked: _selected
                                     .contains(t.path),
@@ -515,9 +519,10 @@ class _ProgressSheet extends StatelessWidget {
 
   const _ProgressSheet({required this.downloads});
 
-  void _menu(BuildContext context) {
+  void _menu(BuildContext context, [BuildContext? btnCtx]) {
     showIosMenu(
       context,
+      anchorContext: btnCtx,
       items: [
         GlassMenuItem(
           label: 'Resume All',
@@ -565,9 +570,12 @@ class _ProgressSheet extends StatelessWidget {
                       ),
                     ),
                     const Expanded(child: SizedBox()),
-                    IconButton(
-                      onPressed: () => _menu(context),
-                      icon: Icon(Icons.more_vert, color: fg),
+                    Builder(
+                      builder: (btnCtx) =>
+                          IconButton(
+                        onPressed: () => _menu(context, btnCtx),
+                        icon: Icon(Icons.more_vert, color: fg),
+                      ),
                     ),
                   ],
                 ),

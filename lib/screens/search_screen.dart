@@ -127,9 +127,10 @@ class _SearchScreenState extends State<SearchScreen> {
     widget.player.play(v, queue: queue);
   }
 
-  void _playlistMenu(PlaylistInfo p) {
+  void _playlistMenu(BuildContext btnCtx, PlaylistInfo p) {
     showIosMenu(
       context,
+      anchorContext: btnCtx,
       items: [
         GlassMenuItem(
           label: 'Save Playlist',
@@ -451,8 +452,8 @@ class _SearchScreenState extends State<SearchScreen> {
               return _ResultCard(
                 video: v,
                 onTap: () => _play(v, items),
-                onMenu: () =>
-                    showVideoMenu(context, v, deps: _deps),
+                onMenu: (btnCtx) =>
+                    showVideoMenu(context, v, deps: _deps, anchorContext: btnCtx),
               );
             },
           ),
@@ -501,7 +502,7 @@ class _SearchScreenState extends State<SearchScreen> {
               return _PlaylistCard(
                 info: p,
                 onTap: () => _playPlaylist(p),
-                onMenu: () => _playlistMenu(p),
+                onMenu: (btnCtx) => _playlistMenu(btnCtx, p),
               );
             },
           ),
@@ -516,7 +517,7 @@ class _SearchScreenState extends State<SearchScreen> {
 class _ResultCard extends StatelessWidget {
   final VideoInfo video;
   final VoidCallback onTap;
-  final VoidCallback onMenu;
+  final void Function(BuildContext btnCtx) onMenu;
 
   const _ResultCard({
     required this.video,
@@ -594,12 +595,14 @@ class _ResultCard extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              onPressed: onMenu,
-              icon: const Icon(
-                Icons.more_vert,
-                color: AppTheme.textGrey,
-                size: 20,
+            Builder(
+              builder: (btnCtx) => IconButton(
+                onPressed: () => onMenu(btnCtx),
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: AppTheme.textGrey,
+                  size: 20,
+                ),
               ),
             ),
           ],
@@ -612,7 +615,7 @@ class _ResultCard extends StatelessWidget {
 class _PlaylistCard extends StatelessWidget {
   final PlaylistInfo info;
   final VoidCallback onTap;
-  final VoidCallback onMenu;
+  final void Function(BuildContext btnCtx) onMenu;
 
   const _PlaylistCard({
     required this.info,
@@ -690,12 +693,14 @@ class _PlaylistCard extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              onPressed: onMenu,
-              icon: const Icon(
-                Icons.more_vert,
-                color: AppTheme.textGrey,
-                size: 20,
+            Builder(
+              builder: (btnCtx) => IconButton(
+                onPressed: () => onMenu(btnCtx),
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: AppTheme.textGrey,
+                  size: 20,
+                ),
               ),
             ),
           ],
@@ -761,8 +766,9 @@ class VideoListScreen extends StatelessWidget {
                       deps.library.addRecent(v);
                       deps.player.play(v, queue: videos);
                     },
-                    onMenu: () =>
-                        showVideoMenu(context, v, deps: deps),
+                    onMenu: (btnCtx) =>
+                        showVideoMenu(context, v, deps: deps,
+                            anchorContext: btnCtx),
                   );
                 },
               ),
@@ -777,7 +783,7 @@ class VideoListScreen extends StatelessWidget {
 class _PlaylistListScreen extends StatelessWidget {
   final String title;
   final List<PlaylistInfo> items;
-  final void Function(PlaylistInfo) onMenu;
+  final void Function(BuildContext, PlaylistInfo) onMenu;
   final void Function(PlaylistInfo) onTap;
 
   const _PlaylistListScreen({
@@ -827,7 +833,7 @@ class _PlaylistListScreen extends StatelessWidget {
                   return _PlaylistCard(
                     info: p,
                     onTap: () => onTap(p),
-                    onMenu: () => onMenu(p),
+                    onMenu: (btnCtx) => onMenu(btnCtx, p),
                   );
                 },
               ),

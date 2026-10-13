@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Background-capable audio engine: just_audio wrapped in an audio_service
 /// handler. Produces the system media notification (play/pause/next/prev)
@@ -54,6 +57,13 @@ class MusicAudioHandler extends BaseAudioHandler {
 
   /// Load [url] (network stream or local file path) and start playback.
   Future<void> playUrl(String url, MediaItem item) async {
+    // Android 13+: the media notification needs POST_NOTIFICATIONS.
+    // Without it, background audio plays but no control panel appears.
+    if (Platform.isAndroid) {
+      try {
+        await Permission.notification.request();
+      } catch (_) {}
+    }
     mediaItem.add(item);
     final source = url.startsWith('http')
         ? AudioSource.uri(Uri.parse(url))

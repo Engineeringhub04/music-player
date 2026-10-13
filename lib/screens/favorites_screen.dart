@@ -47,7 +47,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     widget.player.playQueue(list);
   }
 
-  void _songMenu(VideoInfo v) {
+  void _songMenu(BuildContext btnCtx, VideoInfo v) {
     final deps = VideoMenuDeps(
       library: widget.library,
       player: widget.player,
@@ -57,6 +57,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
     showIosMenu(
       context,
+      anchorContext: btnCtx,
       items: [
         GlassMenuItem(
           label: 'Play',
@@ -203,7 +204,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                 v,
                                 queue: widget.library.favorites,
                               ),
-                              onMenu: () => _songMenu(v),
+                              onMenu: (btnCtx) => _songMenu(btnCtx, v),
                             );
                           },
                         ),

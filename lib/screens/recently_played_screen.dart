@@ -95,10 +95,11 @@ class RecentlyPlayedScreen extends StatelessWidget {
                               video: v,
                               onTap: () =>
                                   _play(context, v),
-                              onMenu: () => showVideoMenu(
+                              onMenu: (btnCtx) => showVideoMenu(
                                 context,
                                 v,
                                 deps: deps,
+                                anchorContext: btnCtx,
                               ),
                             );
                           },

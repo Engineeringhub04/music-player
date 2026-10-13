@@ -112,9 +112,10 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
     }
   }
 
-  void _playlistMenu(UserPlaylist p) {
+  void _playlistMenu(BuildContext btnCtx, UserPlaylist p) {
     showIosMenu(
       context,
+      anchorContext: btnCtx,
       items: [
         GlassMenuItem(
           label: 'Play',
@@ -235,7 +236,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
                         : null,
                     count: p.videos.length,
                     onTap: () => _openPlaylist(p),
-                    onMenu: () => _playlistMenu(p),
+                    onMenu: (btnCtx) => _playlistMenu(btnCtx, p),
                   ),
                 ),
                 if (playlists.isEmpty)

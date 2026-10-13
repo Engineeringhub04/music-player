@@ -11,8 +11,6 @@ import '../services/library_service.dart';
 import '../services/player_service.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
-import '../widgets/download_sheet.dart';
-import '../widgets/glass_popup.dart';
 import '../widgets/video_menu.dart';
 
 /// Player tab: real video on top, transport controls, and the action row.
@@ -158,10 +156,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
     });
   }
 
-  void _openMenu(VideoInfo video) {
+  void _openMenu(BuildContext btnCtx, VideoInfo video) {
     showVideoMenu(
       context,
       video,
+      anchorContext: btnCtx,
       deps: VideoMenuDeps(
         library: library,
         player: player,
@@ -441,11 +440,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 size: actionIcon,
               ),
             ),
-            IconButton(
-              tooltip: 'More',
-              onPressed: () => _openMenu(video),
-              icon: Icon(Icons.more_vert,
-                  color: AppTheme.fg, size: actionIcon),
+            Builder(
+              builder: (btnCtx) => IconButton(
+                tooltip: 'More',
+                onPressed: () => _openMenu(btnCtx, video),
+                icon: Icon(Icons.more_vert,
+                    color: AppTheme.fg, size: actionIcon),
+              ),
             ),
           ],
         ),

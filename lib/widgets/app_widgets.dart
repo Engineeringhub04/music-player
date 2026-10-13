@@ -276,7 +276,7 @@ class ArtistCircle extends StatelessWidget {
 class SongRow extends StatelessWidget {
   final VideoInfo video;
   final VoidCallback onTap;
-  final VoidCallback onMenu;
+  final void Function(BuildContext btnCtx) onMenu;
   final VoidCallback? onCheckToggle;
   final bool checked;
   final bool showCheck;
@@ -379,12 +379,14 @@ class SongRow extends StatelessWidget {
                   size: 22,
                 ),
               ),
-            IconButton(
-              onPressed: onMenu,
-              icon: const Icon(
-                Icons.more_vert,
-                color: AppTheme.textGrey,
-                size: 20,
+            Builder(
+              builder: (btnCtx) => IconButton(
+                onPressed: () => onMenu(btnCtx),
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: AppTheme.textGrey,
+                  size: 20,
+                ),
               ),
             ),
           ],
@@ -457,7 +459,7 @@ class PlaylistRowCard extends StatelessWidget {
   final String? thumbnailUrl;
   final int count;
   final VoidCallback onTap;
-  final VoidCallback? onMenu;
+  final void Function(BuildContext btnCtx)? onMenu;
   final IconData fallbackIcon;
 
   const PlaylistRowCard({
@@ -524,11 +526,13 @@ class PlaylistRowCard extends StatelessWidget {
           ),
           trailing: onMenu == null
               ? null
-              : IconButton(
-                  onPressed: onMenu,
-                  icon: const Icon(
-                    Icons.more_vert,
-                    color: AppTheme.textGrey,
+              : Builder(
+                  builder: (btnCtx) => IconButton(
+                    onPressed: () => onMenu!(btnCtx),
+                    icon: const Icon(
+                      Icons.more_vert,
+                      color: AppTheme.textGrey,
+                    ),
                   ),
                 ),
           shape: RoundedRectangleBorder(

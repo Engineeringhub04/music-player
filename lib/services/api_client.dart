@@ -45,7 +45,7 @@ class ApiClient {
     try {
       resp = await http
           .post(uri, headers: _headers)
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 60));
     } on TimeoutException {
       throw const ApiException(
         'Server timed out. Is the extractor server running?',

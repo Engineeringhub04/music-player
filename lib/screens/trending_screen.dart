@@ -119,10 +119,11 @@ class _TrendingScreenState extends State<TrendingScreen> {
     widget.player.play(v, queue: _all ?? [v]);
   }
 
-  void _headerMenu() {
+  void _headerMenu(BuildContext btnCtx) {
     final videos = _all ?? [];
     showIosMenu(
       context,
+      anchorContext: btnCtx,
       items: [
         GlassMenuItem(
           label: 'Play All',
@@ -190,13 +191,16 @@ class _TrendingScreenState extends State<TrendingScreen> {
                       style: AppText.pageTitle,
                     ),
                   ),
-                  IconButton(
-                    onPressed: _all == null ? null : _headerMenu,
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: AppTheme.isLight
-                          ? Colors.black
-                          : Colors.white,
+                  Builder(
+                    builder: (btnCtx) => IconButton(
+                      onPressed:
+                          _all == null ? null : () => _headerMenu(btnCtx),
+                      icon: Icon(
+                        Icons.more_vert,
+                        color: AppTheme.isLight
+                            ? Colors.black
+                            : Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -279,7 +283,7 @@ class _TrendingScreenState extends State<TrendingScreen> {
           return SongRow(
             video: v,
             onTap: () => _play(v),
-            onMenu: () => showVideoMenu(context, v, deps: _deps),
+            onMenu: (btnCtx) => showVideoMenu(context, v, deps: _deps, anchorContext: btnCtx),
           );
         },
       ),

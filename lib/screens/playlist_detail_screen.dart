@@ -62,11 +62,12 @@ class _PlaylistDetailScreenState
     widget.player?.play(v, queue: queue);
   }
 
-  void _songMenu(VideoInfo v) {
+  void _songMenu(BuildContext btnCtx, VideoInfo v) {
     final deps = _deps;
     if (deps == null) return;
     showIosMenu(
       context,
+      anchorContext: btnCtx,
       items: [
         GlassMenuItem(
           label: 'Play',
@@ -138,10 +139,11 @@ class _PlaylistDetailScreenState
     );
   }
 
-  void _headerMenu() {
+  void _headerMenu(BuildContext btnCtx) {
     final videos = widget.playlist.videos;
     showIosMenu(
       context,
+      anchorContext: btnCtx,
       items: [
         GlassMenuItem(
           label: 'Play All',
@@ -218,9 +220,11 @@ class _PlaylistDetailScreenState
                         style: AppText.pageTitle,
                       ),
                     ),
-                    IconButton(
-                      onPressed: _headerMenu,
-                      icon: Icon(Icons.more_vert, color: fg),
+                    Builder(
+                      builder: (btnCtx) => IconButton(
+                        onPressed: () => _headerMenu(btnCtx),
+                        icon: Icon(Icons.more_vert, color: fg),
+                      ),
                     ),
                   ],
                 ),
@@ -251,7 +255,7 @@ class _PlaylistDetailScreenState
                           return SongRow(
                             video: v,
                             onTap: () => _play(v, videos),
-                            onMenu: () => _songMenu(v),
+                            onMenu: (btnCtx) => _songMenu(btnCtx, v),
                           );
                         },
                       ),

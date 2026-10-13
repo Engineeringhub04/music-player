@@ -32,6 +32,28 @@ API_KEY = _load_api_key()
 
 app = FastAPI(title="Music Player Extractor", version="1.0.0")
 
+# Simple in-memory cache: key -> (expires_at, response_dict).
+# Search/trending results change slowly; caching makes repeat loads instant
+# and avoids hammering YouTube (which triggers bot-checks/502s).
+_CACHE: dict[str, tuple[float, dict]] = {}
+_CACHE_TTL = 300  # 5 minutes
+
+
+def _cache_get(key: str) -> dict | None:
+    hit = _CACHE.get(key)
+    if hit and hit[0] > time.time():
+        return hit[1]
+    _CACHE.pop(key, None)
+    return None
+
+
+def _cache_put(key: str, value: dict, ttl: int = _CACHE_TTL):
+    _CACHE[key] = (time.time() + ttl, value)
+    # keep memory bounded
+    if len(_CACHE) > 200:
+        oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+        _CACHE.pop(oldest, None)
+
 YDL_BIN = os.path.join(APP_DIR, "venv", "bin", "yt-dlp")
 YDL = [YDL_BIN if os.path.exists(YDL_BIN) else "yt-dlp", "--no-warnings", "--no-playlist"]
 
@@ -120,33 +142,45 @@ def health():
 def search(q: str = Query(..., description="Search query"),
            x_api_key: str | None = Header(default=None, alias="X-API-Key")):
     _check_key(x_api_key)
-    proc = _run_ydl(["--flat-playlist", "--dump-json", f"ytsearch10:{q}"], timeout=120)
+    ck = f"search:{q.lower().strip()}"
+    hit = _cache_get(ck)
+    if hit is not None:
+        return hit
+    proc = _run_ydl(["--flat-playlist", "--dump-json", f"ytsearch10:{q}"], timeout=45, retries=2)
     if proc.returncode != 0:
         raise HTTPException(status_code=502, detail="yt-dlp search failed")
-    return {"results": _parse_flat_results(proc.stdout)}
+    resp = {"results": _parse_flat_results(proc.stdout)}
+    _cache_put(ck, resp)
+    return resp
 
 
 @app.post("/trending")
 def trending(country: str | None = Query(default=None, description="ISO country code, e.g. NP"),
              x_api_key: str | None = Header(default=None, alias="X-API-Key")):
     _check_key(x_api_key)
+    ck = f"trending:{(country or 'default').upper()}"
+    hit = _cache_get(ck)
+    if hit is not None:
+        return hit
     geo = []
     if country and len(country.strip()) == 2:
         # Bias YouTube's trending feed toward the requested country.
         geo = ["--geo-bypass-country", country.strip().upper()]
-    # Primary: YouTube trending feed. Fallback: a trending-music search.
+    # NOTE (2026-10-13): youtube.com/feed/trending is dead (YouTube removed it,
+    # yt-dlp gets "channel/playlist does not exist"). Go straight to search.
+    query = "trending music 2026"
+    if country and len(country.strip()) == 2:
+        query = f"trending music {country.strip().upper()} 2026"
     proc = _run_ydl(
-        geo + ["--flat-playlist", "--dump-json", "https://www.youtube.com/feed/trending"],
-        timeout=120,
+        geo + ["--flat-playlist", "--dump-json", f"ytsearch25:{query}"],
+        timeout=45,
+        retries=2,
     )
     if proc.returncode != 0:
-        proc = _run_ydl(
-            geo + ["--flat-playlist", "--dump-json", "ytsearch20:trending music 2026"],
-            timeout=120,
-        )
-    if proc.returncode != 0:
         raise HTTPException(status_code=502, detail="yt-dlp trending failed")
-    return {"results": _parse_flat_results(proc.stdout)}
+    resp = {"results": _parse_flat_results(proc.stdout)}
+    _cache_put(ck, resp, ttl=600)
+    return resp
 
 
 def _playlist_entry_to_result(entry: dict) -> dict:
@@ -172,7 +206,7 @@ def search_playlists(q: str = Query(..., description="Search query"),
     sp = "EgIQAQ%3D%3D" if kind == "albums" else "EgIQAw%3D%3D"
     from urllib.parse import quote_plus
     url = f"https://www.youtube.com/results?search_query={quote_plus(q)}&sp={sp}"
-    proc = _run_ydl(["--flat-playlist", "--dump-json", url], timeout=120)
+    proc = _run_ydl(["--flat-playlist", "--dump-json", url], timeout=45, retries=2)
     if proc.returncode != 0:
         raise HTTPException(status_code=502, detail="yt-dlp playlist search failed")
     results = []

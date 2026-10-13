@@ -237,14 +237,19 @@ class PlayerService extends ChangeNotifier with WidgetsBindingObserver {
     if (_videoUrl != null) return;
     try {
       final vf = _pickVideoFormat(formats);
-      if (vf == null) return;
+      if (vf == null) {
+        debugPrint('No progressive video format found for ${video.id}');
+        return;
+      }
       final url = vf.directUrl ??
           await settings.apiClient.streamUrl(video.videoUrl, vf.formatId);
       // Guard against track changes during the fetch.
       if (current?.id == video.id || current?.videoUrl == video.videoUrl) {
         _videoUrl = url;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Video URL resolution failed for ${video.id}: $e');
+    }
   }
 
   Future<void> _applyEngine() async {
