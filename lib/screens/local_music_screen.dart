@@ -107,34 +107,43 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
       final seen = <String>{};
       // 1. Registered downloads (persisted in LibraryService) — these have
       // proper title/artist/thumbnail metadata.
-      for (final v in widget.library.localTracks) {
-        final f = File(v.videoUrl);
-        if (!await f.exists()) continue;
-        final stat = await f.stat();
-        seen.add(v.videoUrl);
-        tracks.add(_LocalTrack(
-          path: v.videoUrl,
-          videoId: v.id,
-          title: v.title.isEmpty ? _baseName(v.videoUrl) : v.title,
-          artist: v.channelName.isEmpty ? 'Unknown artist' : v.channelName,
-          thumbnailUrl: v.thumbnailUrl,
-          isAudio: v.isAudio,
-          modified: stat.modified,
-        ));
+      try {
+        for (final v in widget.library.localTracks) {
+          final f = File(v.videoUrl);
+          if (!await f.exists()) continue;
+          final stat = await f.stat();
+          seen.add(v.videoUrl);
+          tracks.add(_LocalTrack(
+            path: v.videoUrl,
+            videoId: v.id,
+            title: v.title.isEmpty ? _baseName(v.videoUrl) : v.title,
+            artist: v.channelName.isEmpty ? 'Unknown artist' : v.channelName,
+            thumbnailUrl: v.thumbnailUrl,
+            isAudio: v.isAudio,
+            modified: stat.modified,
+          ));
+        }
+      } catch (e) {
+        debugPrint('LocalMusic: registered tracks load failed: $e');
       }
       // 2. Files on disk never registered (older downloads): keep showing
-      // them with best-effort metadata from history.
-      for (final sf in await widget.storage.listFiles()) {
-        if (seen.contains(sf.path)) continue;
-        final (title, artist, thumb) = _enrich(sf);
-        tracks.add(_LocalTrack(
-          path: sf.path,
-          title: title,
-          artist: artist,
-          thumbnailUrl: thumb,
-          isAudio: sf.path.toLowerCase().endsWith('.mp3'),
-          modified: sf.modified,
-        ));
+      // them with best-effort metadata from history. This step is
+      // independent — it must run even if step 1 failed.
+      try {
+        for (final sf in await widget.storage.listFiles()) {
+          if (seen.contains(sf.path)) continue;
+          final (title, artist, thumb) = _enrich(sf);
+          tracks.add(_LocalTrack(
+            path: sf.path,
+            title: title,
+            artist: artist,
+            thumbnailUrl: thumb,
+            isAudio: sf.path.toLowerCase().endsWith('.mp3'),
+            modified: sf.modified,
+          ));
+        }
+      } catch (e) {
+        debugPrint('LocalMusic: disk scan failed: $e');
       }
       if (!mounted) return;
       setState(() {
@@ -142,7 +151,8 @@ class _LocalMusicScreenState extends State<LocalMusicScreen> {
         _loading = false;
       });
       _applySort();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('LocalMusic: refresh failed: $e');
       if (mounted) setState(() => _loading = false);
     }
   }

@@ -78,54 +78,62 @@ class _SearchBarFieldState extends State<SearchBarField> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.isLight
-            ? const Color(0xFFE8E8ED)
-            : AppTheme.card,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextField(
-        controller: _controller,
-        onChanged: widget.onChanged,
-        onTap: widget.onTap,
-        readOnly: widget.readOnly,
-        autofocus: widget.autofocus,
-        textInputAction: TextInputAction.search,
-        style: TextStyle(
-          color: AppTheme.isLight ? Colors.black : Colors.white,
-          fontSize: 16,
+    // iOS-style search bar: guaranteed rounded corners via ClipRRect,
+    // distinct fill, comfortable touch target.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.isLight
+              ? const Color(0xFFE8E8ED)
+              : const Color(0xFF2C2C2E),
+          borderRadius: BorderRadius.circular(14),
         ),
-        decoration: InputDecoration(
-          hintText: widget.hint,
-          hintStyle: AppText.hint,
-          prefixIcon: const Icon(
-            Icons.search,
-            color: AppTheme.textGrey,
-            size: 22,
+        child: TextField(
+          controller: _controller,
+          onChanged: widget.onChanged,
+          onTap: widget.onTap,
+          readOnly: widget.readOnly,
+          autofocus: widget.autofocus,
+          textInputAction: TextInputAction.search,
+          style: TextStyle(
+            color: AppTheme.isLight ? Colors.black : Colors.white,
+            fontSize: 16,
           ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 44,
-            minHeight: 44,
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            hintStyle: AppText.hint,
+            prefixIcon: const Icon(
+              Icons.search,
+              color: AppTheme.textGrey,
+              size: 22,
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 48,
+              minHeight: 48,
+            ),
+            suffixIcon: widget.suffix ??
+                (_hasText && !widget.readOnly
+                    ? IconButton(
+                        onPressed: _clear,
+                        icon: const Icon(
+                          Icons.cancel,
+                          color: AppTheme.textGrey,
+                          size: 20,
+                        ),
+                        splashRadius: 18,
+                      )
+                    : null),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 14,
+              horizontal: 4,
+            ),
+            isDense: true,
+            filled: false,
           ),
-          suffixIcon: widget.suffix ??
-              (_hasText && !widget.readOnly
-                  ? IconButton(
-                      onPressed: _clear,
-                      icon: const Icon(
-                        Icons.cancel,
-                        color: AppTheme.textGrey,
-                        size: 20,
-                      ),
-                      splashRadius: 18,
-                    )
-                  : null),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 13,
-            horizontal: 4,
-          ),
-          isDense: true,
         ),
       ),
     );

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:path_provider/path_provider.dart';
+import 'package:background_downloader/background_downloader.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// A downloaded media file on disk.
@@ -29,14 +29,15 @@ class StorageService {
   static const _mediaExts = {'mp4', 'm4a', 'mp3', 'webm', 'mkv', 'aac'};
 
   Future<Directory> downloadDir() async {
-    Directory base;
-    if (Platform.isAndroid) {
-      base = (await getExternalStorageDirectory()) ??
-          await getApplicationDocumentsDirectory();
-    } else {
-      base = await getApplicationDocumentsDirectory();
-    }
-    final dir = Directory('${base.path}/$_folder');
+    // MUST match DownloadManager's resolved path exactly: use
+    // background_downloader's own baseDirectoryPath() so both sides
+    // always agree, even if path_provider behavior changes.
+    // (Task.useExternalStorage=true on Android maps applicationDocuments
+    // to the app-specific external files dir.)
+    final base = await Task.baseDirectoryPath(
+      BaseDirectory.applicationDocuments,
+    );
+    final dir = Directory('$base${Platform.pathSeparator}$_folder');
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }

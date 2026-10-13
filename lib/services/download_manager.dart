@@ -248,14 +248,41 @@ class DownloadManager extends ChangeNotifier {
   }
 
   /// Resolve the finished file path and notify [onDownloadComplete].
+  /// Verifies the file actually exists; falls back to scanning the
+  /// download directory by filename if the resolved path is wrong.
   Future<void> _registerComplete(
       DownloadEntry entry, Task task) async {
     final cb = onDownloadComplete;
-    if (cb == null || entry.video == null) return;
+    if (cb == null || entry.video == null) {
+      debugPrint(
+          'DownloadManager: skip registration (callback=${cb != null}, video=${entry.video != null})');
+      return;
+    }
     try {
-      final path = await task.filePath();
+      var path = await task.filePath();
+      var f = File(path);
+      if (!await f.exists()) {
+        // Fallback: scan the download dir for the file by name.
+        debugPrint(
+            'DownloadManager: filePath() missing, scanning dir for ${task.filename}');
+        final dirPath = await downloadDirPath();
+        final candidate =
+            '$dirPath${Platform.pathSeparator}${task.filename}';
+        if (await File(candidate).exists()) {
+          path = candidate;
+          f = File(path);
+        }
+      }
+      if (!await f.exists()) {
+        debugPrint(
+            'DownloadManager: completed file not found on disk: $path');
+        return;
+      }
+      debugPrint('DownloadManager: registering completed file: $path');
       await cb(entry, path);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('DownloadManager: registration failed: $e');
+    }
   }
 
   @override
